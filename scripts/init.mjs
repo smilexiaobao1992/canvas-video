@@ -1,7 +1,7 @@
 // Scaffold a canvas-video project (self-contained: engine + scripts are copied in).
 // Usage: node ~/.claude/skills/canvas-video/scripts/init.mjs <dir> [--example <name>] [--no-install]
 //        node ~/.claude/skills/canvas-video/scripts/init.mjs <dir> --update-engine   refresh engine/ and scripts/ only
-import { cpSync, existsSync, mkdirSync, readdirSync, copyFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readdirSync, copyFileSync, readFileSync, writeFileSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -23,6 +23,14 @@ function copyEngine() {
 if (flag('update-engine')) {
   if (!existsSync(join(target, 'index.html'))) { console.error(`${target} is not a canvas-video project`); process.exit(1); }
   copyEngine();
+  // older projects listed engine files one by one; switch them to the single loader
+  const html = readFileSync(join(target, 'index.html'), 'utf8');
+  if (!html.includes('engine/load.js')) {
+    const next = html
+      .replace(/^[ \t]*<script src="engine\/[^"]+"><\/script>\n/gm, '')
+      .replace(/(<script src="timeline\.js"><\/script>\n)/, '$1<script src="engine/load.js"></script>\n');
+    writeFileSync(join(target, 'index.html'), next);
+  }
   console.log(`engine/ and scripts/ refreshed in ${target}`);
   process.exit(0);
 }

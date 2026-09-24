@@ -14,8 +14,10 @@ const STYLE_DEFAULTS = {
   dark: false,
   fonts: { body: '"PingFang SC", sans-serif', title: null, mono: 'Menlo, monospace' },
   line: { wobble: 0, mode: 'clean', glowBlur: 16, pencil: 'rgba(0, 0, 0, 0.25)' },
-  shadow: 'none', // 'hatch' | 'soft' | 'none'
+  shadow: 'none', // 'hatch' | 'soft' | 'hard' | 'none'
   hatch: { rgb: '0, 0, 0', spacing: 7 },
+  hardShadow: { alpha: 0.35, blur: 0 },
+  pixelate: 0, // > 1: render the frame at 1/N resolution and upscale without smoothing
   texture: { grain: 0, vignette: null },
   transition: 'fade', // 'wipe' | 'erase' | 'fade' | 'cut'
   subtitle: { size: 36, color: null, plate: false },
@@ -25,7 +27,7 @@ const STYLE_DEFAULTS = {
 };
 function registerStyle(name, def) {
   const s = { ...STYLE_DEFAULTS, ...def, name };
-  for (const k of ['fonts', 'line', 'hatch', 'texture', 'subtitle', 'mascot']) s[k] = { ...STYLE_DEFAULTS[k], ...(def[k] || {}) };
+  for (const k of ['fonts', 'line', 'hatch', 'hardShadow', 'texture', 'subtitle', 'mascot']) s[k] = { ...STYLE_DEFAULTS[k], ...(def[k] || {}) };
   s.fonts.title = s.fonts.title || s.fonts.body;
   STYLES[name] = s;
 }
@@ -62,6 +64,12 @@ const bz = ([a, b, c, d], t) => {
     y: u * u * u * a[1] + 3 * u * u * t * b[1] + 3 * u * t * t * c[1] + t * t * t * d[1],
   };
 };
+// lighten (amount > 0) or darken (amount < 0) a hex color; amount in -1..1
+function shade(hex, amount) {
+  const n = parseInt(hex.slice(1), 16);
+  const f = (c) => Math.round(amount >= 0 ? c + (255 - c) * amount : c * (1 + amount));
+  return '#' + [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((c) => f(c).toString(16).padStart(2, '0')).join('');
+}
 function withAlpha(hex, a) {
   const n = parseInt(hex.slice(1), 16);
   return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${a})`;
@@ -90,6 +98,13 @@ function strokeInk() {
   ctx.save();
   if (L.mode === 'glow') { ctx.shadowColor = ctx.strokeStyle; ctx.shadowBlur = L.glowBlur; ctx.stroke(); }
   else if (L.mode === 'pencil') { ctx.shadowColor = L.pencil; ctx.shadowOffsetX = 1.8; ctx.shadowOffsetY = 1.4; ctx.stroke(); }
+  else if (L.mode === 'brush') {
+    // ink bleed halo, main stroke, then a broken dry-brush pass
+    const lw = ctx.lineWidth, dashed = ctx.getLineDash().length > 0;
+    ctx.save(); ctx.filter = 'blur(3px)'; ctx.globalAlpha *= 0.3; ctx.lineWidth = lw * 2.2; ctx.stroke(); ctx.restore();
+    ctx.save(); ctx.lineWidth = lw * 1.15; ctx.globalAlpha *= 0.92; ctx.stroke(); ctx.restore();
+    if (!dashed) { ctx.setLineDash([18, 4, 7, 5]); ctx.lineDashOffset = 3; ctx.lineWidth = lw * 0.5; ctx.globalAlpha *= 0.5; ctx.stroke(); }
+  }
   else if (L.mode === 'chalk') {
     ctx.globalAlpha *= 0.88; ctx.stroke();
     if (ctx.getLineDash().length === 0) { ctx.setLineDash([2, 5, 1, 7]); ctx.lineWidth *= 1.5; ctx.globalAlpha *= 0.4; ctx.stroke(); }
@@ -170,7 +185,11 @@ function shadowRect(x, y, w, h, r, alpha = 0.32) {
   if (w <= 0 || h <= 0 || STYLE.shadow === 'none') return;
   ctx.save();
   if (STYLE.shadow === 'hatch') { rr(x, y, w, h, r); ctx.clip(); hatchFill(alpha, STYLE.hatch.spacing, x, y, w, h); }
-  else { ctx.filter = 'blur(10px)'; ctx.beginPath(); ctx.roundRect(x, y, w, h, r); ctx.fillStyle = `rgba(${STYLE.hatch.rgb}, ${alpha * 0.45})`; ctx.fill(); }
+  else if (STYLE.shadow === 'hard') {
+    const hs = STYLE.hardShadow;
+    if (hs.blur) ctx.filter = `blur(${hs.blur}px)`;
+    rr(x, y, w, h, r); ctx.fillStyle = `rgba(${STYLE.hatch.rgb}, ${hs.alpha})`; ctx.fill();
+  } else { ctx.filter = 'blur(10px)'; ctx.beginPath(); ctx.roundRect(x, y, w, h, r); ctx.fillStyle = `rgba(${STYLE.hatch.rgb}, ${alpha * 0.45})`; ctx.fill(); }
   ctx.restore();
 }
 // hatched shading inside a shape; only drawn by hatching styles
@@ -391,6 +410,38 @@ const TRANSITIONS = {
     ctx.beginPath(); edge.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y))); ctx.stroke();
     ctx.restore();
   },
+  // ink blot spreading from the center with a noisy edge
+  blot(drawNext, wp) {
+    const R = Math.hypot(W, H) * 0.62 * wp;
+    const pts = [];
+    for (let i = 0; i < 90; i++) {
+      const a = (i / 90) * Math.PI * 2;
+      const r = R * (1 + 0.12 * Math.sin(5 * a + 1.3) + 0.06 * Math.sin(11 * a + wp * 4) + 0.04 * Math.sin(23 * a));
+      pts.push({ x: W / 2 + Math.cos(a) * r, y: H / 2 + Math.sin(a) * r * 0.8 });
+    }
+    const trace = () => { ctx.beginPath(); pts.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y))); ctx.closePath(); };
+    ctx.save(); trace(); ctx.clip(); drawNext(); ctx.restore();
+    ctx.save(); ctx.filter = 'blur(10px)'; ctx.strokeStyle = withAlpha(C.ink, 0.28 * (1 - wp)); ctx.lineWidth = 36; trace(); ctx.stroke(); ctx.restore();
+  },
+  // new scene slides up like a sheet of paper laid on top
+  slide(drawNext, wp) {
+    const y = (1 - wp) * H;
+    ctx.save();
+    const g = ctx.createLinearGradient(0, y - 40, 0, y);
+    g.addColorStop(0, 'rgba(0, 0, 0, 0)'); g.addColorStop(1, 'rgba(0, 0, 0, 0.25)');
+    ctx.fillStyle = g; ctx.fillRect(0, y - 40, W, 40);
+    ctx.beginPath(); ctx.rect(0, y, W, H - y); ctx.clip();
+    ctx.translate(0, y);
+    drawNext();
+    ctx.restore();
+  },
+  // blocks of the new scene appear in a seeded random order
+  dissolve(drawNext, wp) {
+    const cols = 32, rows = 18, bw = W / cols, bh = H / rows, r = mulberry32(5);
+    ctx.save(); ctx.beginPath();
+    for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) if (r() < wp) ctx.rect(i * bw, j * bh, bw + 0.5, bh + 0.5);
+    ctx.clip(); drawNext(); ctx.restore();
+  },
   fade(drawNext, wp) {
     const prev = ctx;
     ctx = OFF_CTX; ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; ctx.filter = 'none';
@@ -435,6 +486,14 @@ function drawSubtitle(t) {
   text(l.text, W / 2, 1020, { size: st.size, color: st.color || C.ink });
 }
 
+const PIX = makeCanvas(W, H), PIX_CTX = PIX.getContext('2d');
+function pixelateFrame(n) {
+  const w = Math.round(W / n), h = Math.round(H / n);
+  PIX_CTX.imageSmoothingEnabled = true;
+  PIX_CTX.clearRect(0, 0, w, h);
+  PIX_CTX.drawImage(ctx.canvas, 0, 0, w, h);
+  ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(PIX, 0, 0, w, h, 0, 0, W, H); ctx.restore();
+}
 function sceneIndexAt(t) { const i = SCENE_LIST.findIndex((s) => t < s.end); return i < 0 ? SCENE_LIST.length - 1 : i; }
 function render(t) {
   ctx = MAIN;
@@ -453,6 +512,7 @@ function render(t) {
   const fade = i === 0 ? prog(lt, 0, 0.4) : S.last ? 1 - prog(lt, S.dur - 1.0, S.dur) : 1;
   if (fade < 1) { ctx.globalAlpha = 1 - fade; ctx.drawImage(bgOf(s), 0, 0); ctx.globalAlpha = 1; }
   if (s.overlay) { ctx.save(); s.overlay(ctx, t, C); ctx.restore(); }
+  if (s.pixelate > 1) pixelateFrame(s.pixelate);
   drawGrain(t, s);
   const vig = vignetteOf(s);
   if (vig) ctx.drawImage(vig, 0, 0);

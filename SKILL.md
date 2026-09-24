@@ -1,6 +1,6 @@
 ---
 name: canvas-video
-description: 用纯代码（JS + Canvas2D）做讲解、科普类动画视频：一个 render(t) 函数画出每一帧，edge-tts 配音自动生成时间轴，puppeteer 逐帧导出成 mp4。风格包可以切换（paper 纸张手绘、blueprint 蓝图发光、chalk 黑板粉笔、neon 霓虹赛博、minimal 极简信息图），同一个故事可以一键换风格。以下情况都应使用本 skill：用户想用代码或 Canvas 画动画视频；提到“JS 绘制每一帧”“逐帧渲染”“render(t)”“程序化动画”；想做科普、讲解、知识类短视频并且接受扁平或手绘画风；想给现有视频换风格或新建风格；或者正在修改含有 script.json + scenes.js 的 canvas-video 项目。即使用户没提 Canvas，只要想要“像 X 上那种用 JS 画出来的讲解动画”，也用本 skill。如果用户点名要用 Canvas2D 或 canvas-video，本 skill 优先于 HyperFrames 这类基于 DOM 的视频框架。
+description: 用纯代码（JS + Canvas2D）做讲解、科普类动画视频：一个 render(t) 函数画出每一帧，edge-tts 配音自动生成时间轴，puppeteer 逐帧导出成 mp4。风格包可以切换（paper 纸张手绘、blueprint 蓝图发光、chalk 黑板粉笔、neon 霓虹赛博、minimal 极简信息图、pixel 像素、ink 水墨、papercut 剪纸、isometric 等轴测），还带一组等轴测 3D 绘图函数，同一个故事可以一键换风格。以下情况都应使用本 skill：用户想用代码或 Canvas 画动画视频；提到“JS 绘制每一帧”“逐帧渲染”“render(t)”“程序化动画”；想做科普、讲解、知识类短视频并且接受扁平或手绘画风；想给现有视频换风格或新建风格；或者正在修改含有 script.json + scenes.js 的 canvas-video 项目。即使用户没提 Canvas，只要想要“像 X 上那种用 JS 画出来的讲解动画”，也用本 skill。如果用户点名要用 Canvas2D 或 canvas-video，本 skill 优先于 HyperFrames 这类基于 DOM 的视频框架。
 ---
 
 # canvas-video：用代码画出每一帧
@@ -11,7 +11,7 @@ description: 用纯代码（JS + Canvas2D）做讲解、科普类动画视频：
 
 | 层 | 文件 | 说明 |
 |---|---|---|
-| 引擎（固定） | `engine/core.js`、`engine/mascot.js`、`scripts/*.mjs` | 绘图函数、场景调度、镜头、转场、质感叠加层、配音、导出。一般不要改 |
+| 引擎（固定） | `engine/core.js`、`mascot.js`、`iso.js`、`load.js`，以及 `scripts/*.mjs` | 绘图函数、场景调度、镜头、转场、质感叠加层、配音、导出。一般不要改 |
 | 风格（可替换） | `engine/styles/*.js` | 调色板、字体、背景、线条处理、阴影、质感、转场、叠加层。怎么写见 `references/styles.md` |
 | 内容（每个视频都不同） | `script.json`、`scenes.js` | 口播稿，以及每个场景怎么画 |
 
@@ -19,10 +19,13 @@ description: 用纯代码（JS + Canvas2D）做讲解、科普类动画视频：
 
 ## 工作流
 
+下面的 `<skill>` 指本文件所在的目录（比如 `~/.claude/skills/canvas-video` 或 `~/.codex/skills/canvas-video`）。
+
 ```bash
 # 1. 新建项目：复制引擎，安装 puppeteer-core 和 edge-tts（需要联网）
-node ~/.claude/skills/canvas-video/scripts/init.mjs my-video
-#    想从完整示例改起，加 --example llm-reasoning
+node <skill>/scripts/init.mjs my-video
+#    想从完整示例改起，加 --example llm-reasoning 或 --example iso-city
+#    skill 升级后，更新已有项目的引擎：node <skill>/scripts/init.mjs my-video --update-engine
 
 # 2. 编辑 script.json（口播稿、风格）和 scenes.js（画面）
 
@@ -89,6 +92,12 @@ const CAMS = { intro: (lt, S) => ({ x: 960, y: 540, z: 1 + 0.05 * prog(lt, 0, S.
 | `chalk` | 黑板、断续粉笔线、擦痕、木框 | 黑板擦擦除 |
 | `neon` | 近黑底加透视网格、强发光、扫描线、字幕底板 | 斜线划过 |
 | `minimal` | 浅灰白底、干净线条、柔和投影 | 淡入淡出 |
+| `pixel` | PICO-8 16 色、整帧按 1/3 分辨率像素化、硬投影 | 方块逐格替换 |
+| `ink` | 宣纸底、毛笔墨晕加飞白、远山、朱红印章 | 墨迹晕开 |
+| `papercut` | 分层彩纸、剪刀边缘、硬投影、纸山 | 新的一层纸滑上来 |
+| `isometric` | 柔和配色加 30° 斜网格，适合配合等轴测绘图函数 | 淡入淡出 |
+
+**等轴测不只是换个风格**：平面场景换成 `isometric` 风格后仍然是平面的。要画立体效果，得在场景里用 `engine/iso.js` 提供的 `isoBox`、`isoRoof`、`isoTile`、`isoPath` 等函数，画的时候按 x + y 从小到大排序。参考 `examples/iso-city`。
 
 想新建一种风格，读 `references/styles.md`，在项目里加 `styles/<name>.js`，再在 `index.html` 里加一个 `<script>` 引用即可。
 
@@ -98,8 +107,11 @@ const CAMS = { intro: (lt, S) => ({ x: 960, y: 540, z: 1 + 0.05 * prog(lt, 0, S.
 - `easeOutBack(0)` 已经修正为精确返回 0，自己写缓动函数时也要注意浮点误差，否则 `> 0` 的判断会提前触发。
 - 深色风格下，高亮底上的文字要用 `C.onMark`，不能用 `C.ink`。
 - 镜头推近会裁掉画面边缘的内容，标题和仪表类元素要用 pinned 固定在屏幕上。
-- 颗粒、发光、排线会让导出变慢，60 秒大约 3 分钟。调画面时用 snap，不要反复整片导出。
+- 颗粒、发光、排线、毛笔墨晕会让导出变慢，60 秒大约 3 分钟。调画面时用 snap，不要反复整片导出。
 
 ## 示例
 
-`examples/llm-reasoning/` 是一个 63 秒的完整作品，讲“大模型是怎么推理出答案的”，一共 8 个场景：token、注意力、概率柱状图、思维链、推理分支模拟等，paper 和 blueprint 交替使用。写新场景前，先在这里找相似的写法。
+- `examples/llm-reasoning/`：63 秒的完整作品，讲“大模型是怎么推理出答案的”，一共 8 个场景：token、注意力、概率柱状图、思维链、推理分支模拟等，paper 和 blueprint 交替使用。
+- `examples/iso-city/`：15 秒的等轴测短片。服务器依次升起，数据包在服务器之间流动，一次请求从电脑经过路由器到服务器，再原路返回。
+
+写新场景前，先在这里找相似的写法。

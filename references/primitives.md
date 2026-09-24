@@ -36,6 +36,7 @@
 | `mulberry32(seed)` | 带种子的随机数生成器，每次调用返回 0..1。同一个种子永远得到同一串数 |
 | `typed(str, p)` | 按进度 p 截取前面一部分字符，用来做打字效果 |
 | `bz([[x,y]×4], u)` | 三次贝塞尔曲线上参数为 u 的点，返回 `{x, y}` |
+| `shade(hex, amount)` | 调亮（amount > 0）或调暗（amount < 0）一个颜色，范围 -1..1 |
 
 ## 文字
 | 函数 | 说明 |
@@ -83,11 +84,27 @@
 - `wave`：挥手；`point`：右手向右指
 - `seed`：让多个机器人眨眼、天线摆动不同步
 
+## 等轴测（engine/iso.js）
+世界坐标：+x 往右下，+y 往左下，+z 往上。`o = { ox, oy, s }` 指定原点的屏幕位置和一个单位的像素大小（默认 `ISO = { ox: 960, oy: 380, s: 64 }`）。每个函数都接受 `o`。
+| 函数 | 说明 |
+|---|---|
+| `isoPt(x, y, z, o)` | 世界坐标投影到屏幕，返回 `{x, y}` |
+| `isoPoly(pts3, o)` | 用三维点列建路径，之后自己 fill 或描边 |
+| `isoBox(x, y, z, w, d, h, { o, color, top, left, right, stroke, lw, alpha, shadow, label })` | 立方体。三个面的颜色默认按 color 自动算明暗；z 为 0 时自动在地面投影 |
+| `isoRoof(x, y, z, w, d, h, { o, color })` | 双坡屋顶，放在方块顶上 |
+| `isoTile(x, y, w, d, { o, fill, stroke })`、`isoGrid(x0, y0, x1, y1, { o, color, step })` | 地面格子和网格线 |
+| `isoAlong(pts3, u)` | 沿三维折线按长度取点，返回 `[x, y, z]`，用来移动数据包、角色 |
+| `isoPath(pts3, p, { o, ...pathWithArrow 的参数 })` | 沿三维折线逐渐画出路径 |
+| `isoLabel(str, x, y, z, { o, dy, ...text 的参数 })` | 在三维点上方写字 |
+
+遮挡关系：把要画的对象收集成 `{ depth: x + y（取中心）, draw }`，按 depth 从小到大画。参考 `examples/iso-city/scenes.js` 里的 `drawSorted`。
+
 ## 背景辅助（写风格时用）
 - `bgGuides(b, color)`：淡淡的辅助圆、虚线参考线、十字标记
 - `bgDust(b, rgb, rand, n, maxAlpha, size)`：随机撒点，用来做纸纤维、粉笔灰、星空
 
 ## 引擎行为
+- `index.html` 只引用 `engine/load.js`，由它按顺序加载 core、mascot、iso 和全部内置风格。
 - 场景切换时按新场景风格的 `transition` 转场，时长 0.6 秒；上一幕停在最后一帧。
 - 第一幕开头淡入 0.4 秒，最后一幕结尾淡出 1 秒。
 - 没有定义 CAMS 的场景，默认 3.5% 缓慢推近。

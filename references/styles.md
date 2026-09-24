@@ -16,11 +16,13 @@ registerStyle('my-style', {
     mode: 'pencil',                    // 'pencil' | 'glow' | 'chalk' | 'clean'
     glowBlur: 16,                      // glow 模式的发光半径
     pencil: 'rgba(59, 42, 32, 0.3)',   // pencil 模式的重影颜色
-  },
-  shadow: 'hatch',                     // 'hatch' 排线 | 'soft' 柔和模糊 | 'none'
-  hatch: { rgb: '59, 42, 32', spacing: 7 },   // 排线和柔和阴影都用这个 rgb
+  },                                   // mode 还可以是 'brush'：墨晕 + 主笔画 + 干笔飞白（水墨）
+  shadow: 'hatch',                     // 'hatch' 排线 | 'soft' 柔和模糊 | 'hard' 清晰偏移 | 'none'
+  hatch: { rgb: '59, 42, 32', spacing: 7 },   // 排线、柔和阴影、硬投影都用这个 rgb
+  hardShadow: { alpha: 0.35, blur: 0 },       // shadow 为 'hard' 时的不透明度和模糊（剪纸 3，像素 0）
+  pixelate: 0,                         // 大于 1 时整帧按 1/N 分辨率渲染后放大（像素风格用 3）；字幕和角标不受影响
   texture: { grain: 16, vignette: 'rgba(90, 60, 30, 0.13)' },  // grain 取 0-40；vignette 设为 null 表示不要暗角
-  transition: 'wipe',                  // 'wipe' | 'erase' | 'fade' | 'cut'
+  transition: 'wipe',                  // 'wipe' 斜线划过 | 'erase' 黑板擦 | 'blot' 墨迹晕开 | 'slide' 纸片滑入 | 'dissolve' 方块替换 | 'fade' | 'cut'
   subtitle: { size: 36, color: null, plate: false },           // plate：字幕加半透明底板
   mascot: {},                          // 覆盖吉祥物颜色：{ head, body, screen, eye, antenna, ink, ... }
   background(b, w, h, P, rand) {},     // 只画一次，缓存在离屏画布里；b 是离屏画布的 2D 上下文，P 是调色板
@@ -37,6 +39,10 @@ registerStyle('my-style', {
 | chalk | 墨绿黑板、粉笔白 | 抖动 2.4 + 粉笔断续 | 白色排线 | 颗粒 24 + 暗角 | 黑板擦擦除 | 课堂、数学、推导 |
 | neon | 近黑、霓虹粉青 | 干净 + 强发光 | 无 | 扫描线 + 暗角 | 斜线划过 | 科技、赛博、游戏 |
 | minimal | 浅灰白、高饱和强调色 | 干净 | 柔和投影 | 无 | 淡入淡出 | 商务、数据、信息图 |
+| pixel | PICO-8 深蓝 16 色 | 干净 | 硬投影 | 像素化 ×3 | 方块替换 | 游戏、复古、趣味科普 |
+| ink | 宣纸、墨色、朱砂、青绿 | 抖动 2.0 + 毛笔 | 柔和 | 颗粒 10 + 暗角 | 墨迹晕开 | 国风、历史、文化 |
+| papercut | 薄荷纸、奶油纸、珊瑚橙 | 抖动 0.6 | 硬投影（模糊 3） | 颗粒 8 | 纸片滑入 | 儿童、故事、温暖叙事 |
+| isometric | 灰蓝底、柔和配色 | 干净 | 柔和 | 淡暗角 | 淡入淡出 | 架构、网络、城市、流程（配合 iso.js） |
 
 ## 新写一个风格的步骤
 
@@ -45,7 +51,7 @@ registerStyle('my-style', {
 3. 再定“手感”：wobble 的大小、线条模式、阴影方式，这三项最能决定风格的气质。
 4. 背景只画一次，可以做得精细一些：条纹、网格、擦痕、渐变、辅助线。背景不跟镜头动，能形成一点视差感。
 5. 需要每帧都变的效果（扫描线移动、光带、闪烁）放进 `overlay`，而且必须只由 t 决定。
-6. 在 `index.html` 里、`scenes.js` 之前加上 `<script src="styles/<name>.js"></script>`。
+6. 在 `index.html` 里、`scenes.js` 之前加上 `<script src="styles/<name>.js"></script>`。想把它变成内置风格，就放进 skill 的 `engine/styles/`，并在 `engine/load.js` 的列表里加上名字。
 7. 用 `node scripts/snap.mjs --style <name> --at 0.9` 把现有场景全部换成新风格看一遍。所有场景都清楚可读，才算这个风格合格。
 
 ## 设计建议
@@ -53,3 +59,4 @@ registerStyle('my-style', {
 - 字体会影响排版宽度，但版面都是用 `measure` / `tokW` 动态算的，所以换字体不会挤爆布局。
 - 想让字更有手写感，用霞鹜文楷（LXGW WenKai）；想要干净，用 PingFang SC。机器上没装的字体会回退到下一个。
 - 快速上手：只改调色板和 `line`，就能得到一个明显不同的新风格。
+- 背景里的装饰物（太阳、印章、山）不跟镜头动，而且不知道场景内容会放在哪里。所以只能放在边缘：顶部边缘、角落、底部 20% 以内，也不能太抢眼。

@@ -21,7 +21,8 @@ function drawBot(x, y, s, t, o = {}) {
     ctx.strokeStyle = `rgba(${STYLE.hatch.rgb}, 0.45)`; ctx.lineWidth = 1.6; ctx.beginPath();
     for (let i = -90; i < 90; i += 6) { ctx.moveTo(i, 16); ctx.lineTo(i + 20, -10); }
     ctx.stroke();
-  } else { ctx.fillStyle = 'rgba(0, 0, 0, 0.16)'; ctx.fill(); }
+  } else if (STYLE.shadow === 'hard') { ctx.fillStyle = `rgba(${STYLE.hatch.rgb}, ${STYLE.hardShadow.alpha})`; ctx.fill(); }
+  else { ctx.fillStyle = 'rgba(0, 0, 0, 0.16)'; ctx.fill(); }
   ctx.restore();
   ctx.translate(0, bobY);
   ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = B.ink;

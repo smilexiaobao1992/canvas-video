@@ -27,15 +27,9 @@
   </div>
 </div>
 <audio id="voice" src="voice.wav" preload="auto"></audio>
-<!-- order matters: timeline -> engine -> styles -> content -->
+<!-- order matters: timeline -> engine + built-in styles -> custom styles -> content -->
 <script src="timeline.js"></script>
-<script src="engine/core.js"></script>
-<script src="engine/mascot.js"></script>
-<script src="engine/styles/paper.js"></script>
-<script src="engine/styles/blueprint.js"></script>
-<script src="engine/styles/chalk.js"></script>
-<script src="engine/styles/neon.js"></script>
-<script src="engine/styles/minimal.js"></script>
+<script src="engine/load.js"></script>
 <!-- custom styles: add <script src="styles/my-style.js"></script> here -->
 <script src="scenes.js"></script>
 <script>boot({ scenes: SCENES, cams: typeof CAMS === 'undefined' ? {} : CAMS });</script>
