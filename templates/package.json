@@ -1,0 +1,10 @@
+{
+  "name": "canvas-video-project",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "tts": "node scripts/tts.mjs",
+    "snap": "node scripts/snap.mjs",
+    "export": "node scripts/export.mjs"
+  }
+}
