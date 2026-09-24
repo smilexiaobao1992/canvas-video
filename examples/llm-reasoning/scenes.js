@@ -336,7 +336,7 @@ const SCENES = {
     ctx.restore();
     const paths = [
       { c: [Q, [700, 420], [1200, 760], A], label: '2×4=8 → 3+8=11', ok: true },
-      { c: [Q, [560, 260], [880, 200], [1220, 250]], label: '3+4=7', ok: false },
+      { c: [Q, [560, 330], [880, 280], [1220, 320]], label: '3+4=7', ok: false },
       { c: [Q, [560, 920], [860, 940], [1180, 880]], label: '(3+2)×4=20', ok: false },
       { c: [Q, [520, 500], [760, 360], [1000, 400]], label: '3×2+4=10', ok: false },
     ];
@@ -415,7 +415,7 @@ const SCENES = {
     }
     // stairs made of reasoning steps
     const ground = 880;
-    drawGround(ground, 0, W, prog(lt, 0, 0.5));
+    drawGround(ground, -400, W + 400, prog(lt, 0, 0.5));
     const { labels, bw, stepAt, tops } = outroSteps(S);
     labels.forEach((l, i) => {
       const a = easeOutBack(prog(lt, stepAt(i), stepAt(i) + 0.35));
