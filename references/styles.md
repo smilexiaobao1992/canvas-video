@@ -24,7 +24,6 @@ registerStyle('my-style', {
   texture: { grain: 16, vignette: 'rgba(90, 60, 30, 0.13)' },  // grain 取 0-40；vignette 设为 null 表示不要暗角
   transition: 'wipe',                  // 'wipe' 斜线划过 | 'erase' 黑板擦 | 'blot' 墨迹晕开 | 'slide' 纸片滑入 | 'dissolve' 方块替换 | 'fade' | 'cut'
   subtitle: { size: 36, color: null, plate: false },           // plate：字幕加半透明底板
-  mascot: {},                          // 覆盖吉祥物颜色：{ head, body, screen, eye, antenna, ink, ... }
   background(b, w, h, P, rand) {},     // 只画一次，缓存在离屏画布里；b 是离屏画布的 2D 上下文，P 是调色板
   overlay(c, t, P) {},                 // 可选，每帧叠加在场景上面（在颗粒、暗角之前），比如扫描线、闪烁
 });

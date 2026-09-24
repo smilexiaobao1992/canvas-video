@@ -5,14 +5,29 @@
   "style": "isometric",
   "brand": "canvas-video",
   "hud": true,
+  "cast": {
+    "host": "bot"
+  },
   "scenes": [
-    { "id": "datacenter", "title": "数据中心", "lead": 0.6, "hold": 1.4, "lines": [
-      "每次你打开一个网页，",
-      "背后都有一座看不见的数据城市在运转。"
-    ]},
-    { "id": "request", "title": "一次请求", "lead": 0.5, "hold": 1.8, "lines": [
-      "请求从你的电脑出发，经过路由器，找到服务器，",
-      "再带着网页内容，原路返回。"
-    ]}
+    {
+      "id": "datacenter",
+      "title": "数据中心",
+      "lead": 0.6,
+      "hold": 1.4,
+      "lines": [
+        "每次你打开一个网页，",
+        "背后都有一座看不见的数据城市在运转。"
+      ]
+    },
+    {
+      "id": "request",
+      "title": "一次请求",
+      "lead": 0.5,
+      "hold": 1.8,
+      "lines": [
+        "请求从你的电脑出发，经过路由器，找到服务器，",
+        "再带着网页内容，原路返回。"
+      ]
+    }
   ]
 }

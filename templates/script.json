@@ -3,16 +3,32 @@
   "rate": "+8%",
   "fps": 30,
   "style": "paper",
-  "brand": "My Channel",
+  "brand": null,
   "hud": true,
+  "cast": {
+    "host": "bot"
+  },
   "scenes": [
-    { "id": "hello", "title": "开场", "lead": 0.8, "hold": 1.0, "lines": [
-      "这是一个用代码画出来的视频。",
-      "每一帧，都是一个关于时间的函数。"
-    ]},
-    { "id": "idea", "title": "核心思路", "style": "blueprint", "lead": 0.5, "hold": 1.5, "lines": [
-      "给它一个时间 t，",
-      "它就画出这一刻的画面。"
-    ]}
+    {
+      "id": "hello",
+      "title": "开场",
+      "lead": 0.8,
+      "hold": 1.0,
+      "lines": [
+        "这是一个用代码画出来的视频。",
+        "每一帧，都是一个关于时间的函数。"
+      ]
+    },
+    {
+      "id": "idea",
+      "title": "核心思路",
+      "style": "blueprint",
+      "lead": 0.5,
+      "hold": 1.5,
+      "lines": [
+        "给它一个时间 t，",
+        "它就画出这一刻的画面。"
+      ]
+    }
   ]
 }

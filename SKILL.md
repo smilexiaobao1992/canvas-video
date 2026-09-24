@@ -1,6 +1,6 @@
 ---
 name: canvas-video
-description: 用纯代码（JS + Canvas2D）做讲解、科普类动画视频：一个 render(t) 函数画出每一帧，edge-tts 配音自动生成时间轴，puppeteer 逐帧导出成 mp4。风格包可以切换（paper 纸张手绘、blueprint 蓝图发光、chalk 黑板粉笔、neon 霓虹赛博、minimal 极简信息图、pixel 像素、ink 水墨、papercut 剪纸、isometric 等轴测），还带一组等轴测 3D 绘图函数，同一个故事可以一键换风格。以下情况都应使用本 skill：用户想用代码或 Canvas 画动画视频；提到“JS 绘制每一帧”“逐帧渲染”“render(t)”“程序化动画”；想做科普、讲解、知识类短视频并且接受扁平或手绘画风；想给现有视频换风格或新建风格；或者正在修改含有 script.json + scenes.js 的 canvas-video 项目。即使用户没提 Canvas，只要想要“像 X 上那种用 JS 画出来的讲解动画”，也用本 skill。如果用户点名要用 Canvas2D 或 canvas-video，本 skill 优先于 HyperFrames 这类基于 DOM 的视频框架。
+description: 用纯代码（JS + Canvas2D）做讲解、科普类动画视频：一个 render(t) 函数画出每一帧，edge-tts 配音自动生成时间轴，puppeteer 逐帧导出成 mp4。风格包可以切换（paper 纸张手绘、blueprint 蓝图发光、chalk 黑板粉笔、neon 霓虹赛博、minimal 极简信息图、pixel 像素、ink 水墨、papercut 剪纸、isometric 等轴测），还带一组等轴测 3D 绘图函数，同一个故事可以一键换风格；角色（机器人、人物、小猫，或自己用代码画的）通过 cast 分配，也能一键替换。以下情况都应使用本 skill：用户想用代码或 Canvas 画动画视频；提到“JS 绘制每一帧”“逐帧渲染”“render(t)”“程序化动画”；想做科普、讲解、知识类短视频并且接受扁平或手绘画风；想给现有视频换风格或新建风格；或者正在修改含有 script.json + scenes.js 的 canvas-video 项目。即使用户没提 Canvas，只要想要“像 X 上那种用 JS 画出来的讲解动画”，也用本 skill。如果用户点名要用 Canvas2D 或 canvas-video，本 skill 优先于 HyperFrames 这类基于 DOM 的视频框架。
 ---
 
 # canvas-video：用代码画出每一帧
@@ -11,7 +11,8 @@ description: 用纯代码（JS + Canvas2D）做讲解、科普类动画视频：
 
 | 层 | 文件 | 说明 |
 |---|---|---|
-| 引擎（固定） | `engine/core.js`、`mascot.js`、`iso.js`、`load.js`，以及 `scripts/*.mjs` | 绘图函数、场景调度、镜头、转场、质感叠加层、配音、导出。一般不要改 |
+| 引擎（固定） | `engine/core.js`、`characters.js`、`iso.js`、`load.js`，以及 `scripts/*.mjs` | 绘图函数、场景调度、镜头、转场、质感叠加层、配音、导出。一般不要改 |
+| 形象（可替换） | `engine/characters/*.js` | 角色的长相和动作。怎么写见 `references/characters.md` |
 | 风格（可替换） | `engine/styles/*.js` | 调色板、字体、背景、线条处理、阴影、质感、转场、叠加层。怎么写见 `references/styles.md` |
 | 内容（每个视频都不同） | `script.json`、`scenes.js` | 口播稿，以及每个场景怎么画 |
 
@@ -38,9 +39,12 @@ node scripts/snap.mjs            # 或指定时刻：snap.mjs 3.5 12；或每个
 # 5. 画面满意后，生成真实配音（按句缓存，改稿后只重新合成改动的句子）
 node scripts/tts.mjs
 
-# 6. 导出
-node scripts/export.mjs          # → out.mp4
-node scripts/export.mjs --style chalk   # 整片强制换成黑板风格 → out-chalk.mp4
+# 6. 导出（多个 Chrome 并行渲染，浏览器内 WebCodecs 硬件编码 H.264；63 秒的视频约 13 秒导完）
+node scripts/export.mjs                     # → out.mp4
+node scripts/export.mjs --style chalk       # 整片换成黑板风格 → out-chalk.mp4
+node scripts/export.mjs --cast host=cat     # 主持人换成小猫
+node scripts/export.mjs --draft             # 15fps 低码率草稿，最快
+#   其他参数：--workers N（并行数，默认 min(6, 核数-2)）、--bitrate 30（Mbps，默认 20）、--out 文件名
 ```
 
 预览：直接用浏览器打开 `index.html`，有播放、拖动条，还有风格下拉框可以切换；地址后加 `?t=12.5` 跳到指定时刻，加 `?style=neon` 强制换风格。
@@ -52,7 +56,8 @@ node scripts/export.mjs --style chalk   # 整片强制换成黑板风格 → out
 ```json
 {
   "voice": "zh-CN-YunxiNeural", "rate": "+8%", "fps": 30,
-  "style": "paper", "brand": "My Channel", "hud": true,
+  "style": "paper", "brand": null, "hud": true,
+  "cast": { "host": "bot", "student": { "character": "person", "options": { "hair": "long" } } },
   "scenes": [
     { "id": "intro", "title": "开场", "style": "blueprint", "lead": 0.8, "hold": 1.0, "lines": ["第一句。", "第二句。"] }
   ]
@@ -60,7 +65,8 @@ node scripts/export.mjs --style chalk   # 整片强制换成黑板风格 → out
 ```
 - `lead`：场景开始到第一句旁白之间的空白秒数。`hold`：最后一句说完后画面停留的秒数，给动画留收尾时间。
 - 场景的 `style` 会覆盖全局 `style`。常见用法是“外部世界”用 paper，“机器内部”用 blueprint，两种交替。
-- `brand` 是右上角的角标文字，设为 null 就不显示；`hud` 控制章节进度小圆环。
+- `brand` 是右上角的角标文字，默认 null 不显示；`hud` 控制章节进度小圆环。
+- `cast` 把角色分配给形象，场景也可以写自己的 `cast` 覆盖。
 - 常用声音：云希 `zh-CN-YunxiNeural`（活泼男声）、晓晓 `zh-CN-XiaoxiaoNeural`（温暖女声）、云扬 `zh-CN-YunyangNeural`（新闻男声）。完整列表：`.venv/bin/edge-tts --list-voices`。
 - edge-tts 需要联网，口播稿会发到微软的服务上合成。
 
@@ -73,7 +79,7 @@ const SCENES = {
     drawTag('标题', '副标题', prog(lt, 0.3, 1.4));
     const p = prog(lt, l0.s, l0.e);             // 0..1，跟着这句话的语速推进
     text(typed('逐字打出', p), 960, 540, { size: 56 });
-    drawBot(400, 800, 1, t, { mood: p >= 1 ? 'happy' : 'normal' });
+    drawRole('host', 400, 800, 1, t, { mood: p >= 1 ? 'happy' : 'normal', talk: S.speaking(lt) });
   },
 };
 const CAMS = { intro: (lt, S) => ({ x: 960, y: 540, z: 1 + 0.05 * prog(lt, 0, S.dur) }) };  // 可选
@@ -82,6 +88,12 @@ const CAMS = { intro: (lt, S) => ({ x: 960, y: 540, z: 1 + 0.05 * prog(lt, 0, S.
 - 动作时间要挂在旁白上（`S.L(i).s` 或 `.e`），不要写死秒数，这样换声音、改语速以后依然对齐。
 - 不能跨帧保存状态。模拟类内容用 `mulberry32(seed)` 预先算好历史，再按时间插值读取。
 - 绘图函数的完整列表见 `references/primitives.md`，常见场景的写法见 `references/scene-patterns.md`。
+
+## 角色
+
+场景里只写角色名，比如 `drawRole('host', …)`，谁来演由 `cast` 决定。内置形象有 `bot`（机器人）、`person`（人物：发型、眼镜、各部位颜色都能改）、`cat`（小猫）。所有形象都支持同一套动作：表情（normal / happy / sad）、眼神、走路、挥手、指向、说话。
+
+想要新形象，就在项目里写 `characters/<name>.js`，调用 `registerCharacter`。接口、辅助函数和示例见 `references/characters.md`。改完用 `snap.mjs --cast host=<name>` 在几种风格下检查。
 
 ## 风格
 
@@ -108,6 +120,10 @@ const CAMS = { intro: (lt, S) => ({ x: 960, y: 540, z: 1 + 0.05 * prog(lt, 0, S.
 - 深色风格下，高亮底上的文字要用 `C.onMark`，不能用 `C.ink`。
 - 镜头推近会裁掉画面边缘的内容，标题和仪表类元素要用 pinned 固定在屏幕上。
 - 颗粒、发光、排线、毛笔墨晕会让导出变慢，60 秒大约 3 分钟。调画面时用 snap，不要反复整片导出。
+
+## 改引擎之后
+
+改了 `engine/`、`scripts/`、`templates/` 或 `examples/`，都要运行 `node <skill>/scripts/selftest.mjs`。它会把每个示例在所有风格、所有形象下截图，同时做纯函数检查，最后用草稿模式完整导出一遍，任何一步失败都会报出来。
 
 ## 示例
 

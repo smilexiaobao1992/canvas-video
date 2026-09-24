@@ -7,7 +7,9 @@
 - 没有任何图片素材，所有画面都是 Canvas2D 画出来的
 - 改一句台词，画面自动重新对齐
 - 同一套场景代码，一行参数就能换成 9 种风格中的任意一种
-- 带吉祥物、镜头运动、转场、字幕、章节进度提示
+- 角色可替换、可自定义：内置机器人、人物、小猫，场景里只写角色名，由 `cast` 决定谁来演
+- 带镜头运动、转场、字幕、章节进度提示
+- 导出很快：多个 Chrome 并行渲染，浏览器内硬件编码，63 秒的视频约 13 秒导完
 
 ## 风格
 
@@ -22,6 +24,25 @@
 | `ink` | 宣纸、毛笔墨晕、远山、朱红印章 | 墨迹晕开 |
 | `papercut` | 分层彩纸、硬投影、纸山 | 纸片滑入 |
 | `isometric` | 柔和配色加 30° 斜网格 | 淡入淡出 |
+
+## 角色
+
+```json
+"cast": {
+  "host": "bot",
+  "student": { "character": "person", "colors": { "shirt": "#e76f51" }, "options": { "hair": "long", "glasses": true } }
+}
+```
+
+| 形象 | 说明 |
+|---|---|
+| `bot` | 圆头机器人，屏幕脸 |
+| `person` | 卡通小人，发型（short / long / bun）、眼镜、肤色和衣服颜色都能改 |
+| `cat` | 站立的卡通小猫，尾巴会摆 |
+
+三个形象都支持表情、眼神、走路、挥手、指向、说话（跟着旁白动嘴），也都会跟着风格变画法。自定义形象：写一个 `registerCharacter(...)` 文件就行，见 `references/characters.md`。导出时可以临时换人：`--cast host=cat`。
+
+## 等轴测
 
 另外还有一组等轴测绘图函数（`engine/iso.js`：立体方块、屋顶、地面格子、路径），用来画立体的小城、机房、流程。
 
@@ -74,6 +95,8 @@ node scripts/snap.mjs          # 每个场景截一张图，拼成 snaps/sheet.p
 node scripts/tts.mjs           # 生成真实配音
 node scripts/export.mjs        # 导出 out.mp4
 node scripts/export.mjs --style ink   # 整片换成水墨风格，导出 out-ink.mp4
+node scripts/export.mjs --cast host=person   # 主持人换成人物
+node scripts/export.mjs --draft       # 草稿：15fps 低码率，几秒出片
 ```
 
 预览：用浏览器打开 `index.html`，可以播放、拖动，还能从下拉框切换风格。
@@ -96,23 +119,27 @@ node $SKILL/scripts/init.mjs my-video --update-engine
 SKILL.md                 给 agent 的主说明：工作流、约定、检查清单
 engine/
   core.js                绘图函数、场景调度、镜头、转场、质感、预览和导出接口
-  mascot.js              吉祥物
+  characters.js          角色和 cast
+  characters/*.js        3 个内置形象
   iso.js                 等轴测绘图函数
-  load.js                按顺序加载引擎和全部内置风格
+  load.js                按顺序加载引擎、内置形象和全部内置风格
   styles/*.js            9 个风格包
 scripts/
   init.mjs               新建项目 / 更新引擎
   tts.mjs                配音 + 时间轴（支持 --dry）
   snap.mjs               截图拼成总览图，页面报错时失败退出
-  export.mjs             逐帧导出 mp4（支持 --style）
+  export.mjs             并行渲染 + WebCodecs 编码导出 mp4（--style / --cast / --draft / --workers）
+  selftest.mjs           引擎自检：所有示例 × 所有风格 × 所有形象
 templates/               新项目模板
 examples/
   llm-reasoning/         63 秒：大模型是怎么推理出答案的
   iso-city/              15 秒：等轴测数据城市
-references/              API、风格接口、场景写法、踩过的坑
+references/              API、风格接口、角色接口、场景写法、踩过的坑
 ```
 
 ## 扩展
 
 - **新风格**：按 `references/styles.md` 写一个 `registerStyle(...)`，放进 `engine/styles/`，再在 `engine/load.js` 的列表里加上名字。
+- **新形象**：按 `references/characters.md` 写一个 `registerCharacter(...)`。
 - **新的场景写法**：先看 `references/scene-patterns.md`，以及 `examples/` 里的代码。
+- 改完引擎运行 `node scripts/selftest.mjs`，全部通过再提交。

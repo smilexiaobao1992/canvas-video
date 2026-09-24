@@ -3,8 +3,11 @@
   "rate": "+8%",
   "fps": 30,
   "style": "paper",
-  "brand": "Token Talk",
+  "brand": null,
   "hud": true,
+  "cast": {
+    "host": "bot"
+  },
   "scenes": [
     {
       "id": "intro",

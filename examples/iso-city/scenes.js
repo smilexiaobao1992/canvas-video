@@ -46,7 +46,7 @@ const SCENES = {
     drawSorted(items);
 
     text('每秒成千上万个请求，在服务器之间来回奔跑', 960, 950, { size: 34, color: C.note, alpha: prog(lt, l1.s + 1.0, l1.s + 1.6) });
-    drawBot(230, 900, 0.6, t, { look: 1, seed: 1 });
+    drawRole('host', 230, 900, 0.6, t, { look: 1, seed: 1 });
   },
 
   request(lt, S, t) {
@@ -84,7 +84,7 @@ const SCENES = {
       const p = isoPt(1.3, 6.3, 2.4, CITY);
       drawCheck(p.x + 110, p.y - 10, 50, prog(lt, l1.e, l1.e + 0.4));
     }
-    drawBot(230, 900, 0.6, t, { look: 1, mood: done ? 'happy' : 'normal', seed: 2 });
+    drawRole('host', 230, 900, 0.6, t, { look: 1, mood: done ? 'happy' : 'normal', seed: 2 });
   },
 };
 

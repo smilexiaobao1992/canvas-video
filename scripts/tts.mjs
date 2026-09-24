@@ -8,7 +8,8 @@ import { createHash } from 'node:crypto';
 
 const DRY = process.argv.includes('--dry');
 const LINE_GAP = 0.35;
-const TRIM = 'silenceremove=start_periods=1:start_threshold=-50dB,areverse,silenceremove=start_periods=1:start_threshold=-50dB,areverse';
+// trim leading/trailing silence, then short fades so trimmed edges never click
+const TRIM = 'silenceremove=start_periods=1:start_threshold=-50dB,areverse,silenceremove=start_periods=1:start_threshold=-50dB,afade=t=in:d=0.04,areverse,afade=t=in:d=0.015';
 const script = JSON.parse(readFileSync('script.json', 'utf8'));
 const voice = script.voice || 'zh-CN-YunxiNeural';
 const rate = script.rate || '+0%';
@@ -53,8 +54,8 @@ for (const scene of script.scenes) {
       const base = `build/tts/${key}`;
       if (!existsSync(`${base}.mp3`)) synth(text, `${base}.mp3`);
       // trim leading/trailing silence so subtitles and visuals line up with speech
-      if (!existsSync(`${base}.wav`)) execFileSync('ffmpeg', ['-v', 'error', '-y', '-i', `${base}.mp3`, '-af', TRIM, '-ar', '44100', '-ac', '1', `${base}.wav`]);
-      file = `${base}.wav`;
+      if (!existsSync(`${base}.v2.wav`)) execFileSync('ffmpeg', ['-v', 'error', '-y', '-i', `${base}.mp3`, '-af', TRIM, '-ar', '44100', '-ac', '1', `${base}.v2.wav`]);
+      file = `${base}.v2.wav`;
       dur = probe(file);
     }
     lines.push({ id: n, scene: scene.id, text, start: +t.toFixed(3), end: +(t + dur).toFixed(3), file });
@@ -63,7 +64,7 @@ for (const scene of script.scenes) {
     n++;
   }
   cursor = (scene.lines.length ? t - LINE_GAP : t) + (scene.hold ?? 1.0);
-  scenes.push({ id: scene.id, title: scene.title || scene.id, style: scene.style || null, start: +sceneStart.toFixed(3), end: +cursor.toFixed(3) });
+  scenes.push({ id: scene.id, title: scene.title || scene.id, style: scene.style || null, cast: scene.cast || null, start: +sceneStart.toFixed(3), end: +cursor.toFixed(3) });
 }
 
 const duration = +cursor.toFixed(3);
@@ -75,13 +76,14 @@ if (DRY) {
   const args = ['-v', 'error', '-y'];
   lines.forEach((l) => args.push('-i', l.file));
   const filters = lines.map((l, i) => `[${i}]adelay=${Math.round(l.start * 1000)}:all=1[a${i}]`);
-  filters.push(`${lines.map((_, i) => `[a${i}]`).join('')}amix=inputs=${lines.length}:normalize=0,apad=whole_dur=${duration}[out]`);
+  // even loudness across lines (-16 LUFS, a common target for web video), padded to the full duration
+  filters.push(`${lines.map((_, i) => `[a${i}]`).join('')}amix=inputs=${lines.length}:normalize=0,loudnorm=I=-16:TP=-1.5:LRA=11,apad=whole_dur=${duration}[out]`);
   args.push('-filter_complex', filters.join(';'), '-map', '[out]', '-ar', '44100', 'voice.wav');
   execFileSync('ffmpeg', args);
 }
 
 const timeline = {
-  duration, fps: script.fps || 30, style: script.style || 'paper', brand: script.brand ?? null, hud: script.hud ?? true,
+  duration, fps: script.fps || 30, style: script.style || 'paper', brand: script.brand ?? null, hud: script.hud ?? true, cast: script.cast || { host: 'bot' },
   scenes, lines: lines.map(({ file, ...l }) => l),
 };
 writeFileSync('timeline.js', `window.TIMELINE = ${JSON.stringify(timeline, null, 2)};\n`);

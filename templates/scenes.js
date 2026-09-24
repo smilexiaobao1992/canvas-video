@@ -1,7 +1,9 @@
 /* Content layer: one function per scene id in script.json.
  * Signature: (lt, S, t) => void
  *   lt = seconds since this scene started, t = global seconds (use for idle motion like blinking)
- *   S  = { id, title, style, dur, lines, L(i) -> { s, e } }  — narration line i start/end, relative to the scene
+ *   S  = { id, title, style, dur, lines, cast, L(i) -> { s, e }, speaking(lt) }
+ *        L(i): narration line i start/end relative to the scene; speaking(lt): true while a line is being spoken
+ * Characters: drawRole('host', x, y, scale, t, { mood, look, walk, wave, point, talk }) — who plays "host" is set by "cast" in script.json.
  * Draw with engine primitives and semantic colors (C.ink, C.ok, C.bad, C.note, C.mark, C.surface ...).
  * Everything must be a pure function of time: no state carried between frames.
  */
@@ -11,7 +13,7 @@ const SCENES = {
     drawTag('用代码画视频', 'Canvas2D', prog(lt, 0.3, 1.4));
     drawGround(740);
     const bx = lerp(-160, 460, easeOut(prog(lt, 0, 1.6)));
-    drawBot(bx, 740, 1, t, { walk: lt < 1.5, look: 0.8, mood: lt > l1.s ? 'happy' : 'normal' });
+    drawRole('host', bx, 740, 1, t, { walk: lt < 1.5, look: 0.8, mood: lt > l1.s ? 'happy' : 'normal', talk: S.speaking(lt) });
     // card that types the first line as it is spoken
     const s = easeOutBack(prog(lt, l0.s - 0.3, l0.s + 0.2));
     if (s > 0) {

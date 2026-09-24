@@ -13,7 +13,7 @@ const SCENES = {
     const walkP = easeOut(prog(lt, 0, 1.6));
     const bx = lerp(-160, 470, walkP);
     const lookUp = prog(lt, l0.s + 0.5, l0.s + 1);
-    drawBot(bx, 720, 1, t, { walk: lt < 1.5, look: lookUp * 0.8, mood: lt > l1.e ? 'normal' : 'normal' });
+    drawRole('host', bx, 720, 1, t, { walk: lt < 1.5, look: lookUp * 0.8, mood: lt > l1.e ? 'normal' : 'normal' });
     drawTag('一个问题', '你问，它答', prog(lt, 0.3, 1.4));
 
     // question card
@@ -144,7 +144,7 @@ const SCENES = {
     // label under the focus token
     const fp = prog(lt, 0.5, 1.0);
     text('“一共” 在看谁？', lay[focus].x, rowY + 80, { size: 30, color: C.note, alpha: fp });
-    drawBot(170, 940, 0.5, t, { look: 1, seed: 1 });
+    drawRole('host', 170, 940, 0.5, t, { look: 1, seed: 1 });
   },
 
   next(lt, S, t) {
@@ -179,7 +179,7 @@ const SCENES = {
       ctx.fillStyle = C.ok; ctx.fillRect(sx, rowY - 26, 4, 52);
     }
     // bot + thinking dots
-    drawBot(330, 880, 0.8, t, { look: 1, seed: 2 });
+    drawRole('host', 330, 880, 0.8, t, { look: 1, seed: 2 });
     for (let d = 0; d < 3; d++) {
       const a = 0.3 + 0.7 * Math.max(0, Math.sin(t * 5 - d * 0.8));
       ctx.fillStyle = withAlpha(C.ink, a);
@@ -250,7 +250,7 @@ const SCENES = {
       ctx.beginPath(); ctx.arc(b.x, b.y, 16, 0, Math.PI * 2); ctx.fill(); strokeInk();
     }
     // bot answers
-    drawBot(760, 900, 0.85, t, { look: 1, mood: cross > 0.5 ? 'sad' : said ? 'happy' : 'normal', seed: 3 });
+    drawRole('host', 760, 900, 0.85, t, { look: 1, mood: cross > 0.5 ? 'sad' : said ? 'happy' : 'normal', seed: 3 });
     const bs = easeOutBack(prog(lt, l1.s + 1.3, l1.s + 1.7));
     drawBubble(1200, 590, 460, 140, { x: 850, y: 740 }, { scale: bs });
     if (bs > 0.3) text('一共 7 个！', 1200, 592, { size: 60, weight: 700, alpha: prog(bs, 0.3, 1) });
@@ -322,7 +322,7 @@ const SCENES = {
         text('线索', Math.max(a.x, b.x) + 70, mid.y, { size: 30, color: C.ok, alpha: prog(lt, l2.s + 1.3 + i * 0.8, l2.s + 1.7 + i * 0.8) });
       }
     });
-    drawBot(320, 880, 0.85, t, { point: lt > l1.s, look: 1, mood: lt > l1.e + 0.4 ? 'happy' : 'normal', seed: 4 });
+    drawRole('host', 320, 880, 0.85, t, { point: lt > l1.s, look: 1, mood: lt > l1.e + 0.4 ? 'happy' : 'normal', seed: 4 });
   },
 
   reason(lt, S, t) {
@@ -395,7 +395,7 @@ const SCENES = {
     }
     text('答案', A[0], A[1] + 92, { size: 30, color: C.note });
     drawProgress(80, 180, 300, share[0], '把握');
-    drawBot(1700, 960, 0.5, t, { mood: solved > 0 ? 'happy' : 'normal', seed: 5 });
+    drawRole('host', 1700, 960, 0.5, t, { mood: solved > 0 ? 'happy' : 'normal', seed: 5 });
   },
 
   outro(lt, S, t) {
@@ -432,7 +432,7 @@ const SCENES = {
     });
     const { bx, by } = outroBot(lt, S);
     const finished = lt > stepAt(labels.length - 1) + 0.6;
-    drawBot(bx, by, 0.6, t, { wave: finished, mood: finished ? 'happy' : 'normal', look: 0.6, seed: 6 });
+    drawRole('host', bx, by, 0.6, t, { wave: finished, mood: finished ? 'happy' : 'normal', look: 0.6, seed: 6 });
   },
 };
 

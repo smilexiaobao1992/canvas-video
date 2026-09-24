@@ -21,13 +21,12 @@ const STYLE_DEFAULTS = {
   texture: { grain: 0, vignette: null },
   transition: 'fade', // 'wipe' | 'erase' | 'fade' | 'cut'
   subtitle: { size: 36, color: null, plate: false },
-  mascot: {},
   background(b, w, h, P) { b.fillStyle = P.bg; b.fillRect(0, 0, w, h); },
   overlay: null,
 };
 function registerStyle(name, def) {
   const s = { ...STYLE_DEFAULTS, ...def, name };
-  for (const k of ['fonts', 'line', 'hatch', 'hardShadow', 'texture', 'subtitle', 'mascot']) s[k] = { ...STYLE_DEFAULTS[k], ...(def[k] || {}) };
+  for (const k of ['fonts', 'line', 'hatch', 'hardShadow', 'texture', 'subtitle']) s[k] = { ...STYLE_DEFAULTS[k], ...(def[k] || {}) };
   s.fonts.title = s.fonts.title || s.fonts.body;
   STYLES[name] = s;
 }
@@ -359,25 +358,28 @@ const GRAIN = (() => {
   b.putImageData(img, 0, 0);
   return c;
 })();
+const GRAIN_PATTERNS = new WeakMap();
 function drawGrain(t, s) {
   if (!s.texture.grain) return;
+  if (!GRAIN_PATTERNS.has(ctx)) GRAIN_PATTERNS.set(ctx, ctx.createPattern(GRAIN, 'repeat'));
   const r = mulberry32(Math.floor(t * 12) + 1);
   const ox = Math.floor(r() * 256), oy = Math.floor(r() * 256);
   ctx.save();
   ctx.globalAlpha = s.texture.grain / 40;
-  ctx.fillStyle = ctx.createPattern(GRAIN, 'repeat');
+  ctx.fillStyle = GRAIN_PATTERNS.get(ctx);
   ctx.translate(-ox, -oy);
   ctx.fillRect(0, 0, W + 256, H + 256);
   ctx.restore();
 }
 
 // ---------- scene runtime ----------
-let SCENE_LIST = [], SCENE_FNS = {}, CAM_FNS = {}, TL = null;
+let SCENE_LIST = [], SCENE_FNS = {}, CAM_FNS = {}, TL = null, CUR_SCENE = null;
 const TRANSITION = 0.6;
 const OFF = makeCanvas(W, H), OFF_CTX = OFF.getContext('2d');
 
 function drawScene(S, lt, t) {
   const s = useStyle(S.style);
+  CUR_SCENE = S;
   ctx.drawImage(bgOf(s), 0, 0);
   ctx.save();
   // scene camera: focus point + zoom; default is a slow push-in
@@ -444,7 +446,7 @@ const TRANSITIONS = {
   },
   fade(drawNext, wp) {
     const prev = ctx;
-    ctx = OFF_CTX; ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; ctx.filter = 'none';
+    ctx = OFF_CTX; ctx.reset();
     drawNext();
     ctx = prev;
     ctx.save(); ctx.globalAlpha = wp; ctx.drawImage(OFF, 0, 0); ctx.restore();
@@ -497,7 +499,7 @@ function pixelateFrame(n) {
 function sceneIndexAt(t) { const i = SCENE_LIST.findIndex((s) => t < s.end); return i < 0 ? SCENE_LIST.length - 1 : i; }
 function render(t) {
   ctx = MAIN;
-  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; ctx.setLineDash([]); ctx.filter = 'none';
+  ctx.reset(); // clears pixels and every piece of state (transform, clip, filter, composite, shadow, dash)
   const i = sceneIndexAt(t);
   const S = SCENE_LIST[i];
   const lt = t - S.start;
@@ -528,20 +530,28 @@ function boot({ scenes, cams = {} }) {
   if (!TL) throw new Error('timeline.js is missing — run `node scripts/tts.mjs` first');
   const params = new URLSearchParams(location.search);
   const forced = params.get('style');
+  // ?cast=host:cat,student:person overrides the script's cast for every scene
+  const castOverride = Object.fromEntries((params.get('cast') || '').split(',').filter(Boolean).map((kv) => kv.split(':')));
   SCENE_FNS = scenes; CAM_FNS = cams;
   SCENE_LIST = TL.scenes.map((s, i) => {
     const lines = TL.lines.filter((l) => l.scene === s.id);
     const style = forced || s.style || TL.style || 'paper';
     if (!STYLES[style]) throw new Error(`scene "${s.id}" uses unknown style "${style}"; available: ${Object.keys(STYLES).join(', ')}`);
     if (!scenes[s.id]) throw new Error(`scenes.js has no function for scene "${s.id}"`);
+    const cast = resolveCast({ ...(TL.cast || {}), ...(s.cast || {}) }, castOverride, s.id);
     return {
-      ...s, style, lines, dur: s.end - s.start, last: i === TL.scenes.length - 1,
+      ...s, style, lines, cast, dur: s.end - s.start, last: i === TL.scenes.length - 1,
+      // true while a narration line of this scene is being spoken (drive talking mouths with it)
+      speaking: (lt) => lines.some((l) => lt >= l.start - s.start && lt < l.end - s.start),
       L: (k) => {
         if (!lines[k]) throw new Error(`scene "${s.id}" has no narration line ${k} (it has ${lines.length})`);
         return { s: lines[k].start - s.start, e: lines[k].end - s.start };
       },
     };
   });
+
+  const unknown = Object.keys(scenes).filter((id) => !TL.scenes.some((s) => s.id === id));
+  if (unknown.length) console.warn(`scenes.js defines scenes not in script.json: ${unknown.join(', ')}`);
 
   if (params.has('export')) document.body.classList.add('export');
   const audio = document.getElementById('voice');

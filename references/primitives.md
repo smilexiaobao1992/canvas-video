@@ -1,4 +1,4 @@
-# 引擎 API（engine/core.js、mascot.js）
+# 引擎 API（engine/core.js、characters.js、iso.js）
 
 所有函数都是全局的，画到当前的 `ctx` 上。颜色用当前风格的调色板 `C`。
 
@@ -75,14 +75,13 @@
 | `drawTag(big, small, p)` | 左上角章节标题：逐字打出 + 手绘下划线 |
 | `drawProgress(x, y, w, value, label)` | 进度条加百分比 |
 
-## 吉祥物
-`drawBot(x, y, s, t, { mood, look, walk, wave, point, alpha, seed })`
-- (x, y) 是脚底位置；s=1 时大约 300px 高
-- `mood`：`'normal'` / `'happy'` / `'sad'`（sad 会流汗）
-- `look`：眼睛朝向，-1 到 1
-- `walk`：走路时的颠簸和摆腿
-- `wave`：挥手；`point`：右手向右指
-- `seed`：让多个机器人眨眼、天线摆动不同步
+## 角色
+| 函数 | 说明 |
+|---|---|
+| `drawRole(role, x, y, s, t, { mood, look, walk, wave, point, talk, alpha, seed, options })` | 画当前场景 cast 里扮演 role 的形象。(x, y) 是脚底；s=1 时约 300px 高 |
+| `drawCharacter(name, x, y, s, t, opts)` | 不经过 cast，直接画某个形象 |
+| `S.speaking(lt)` | 本场景有旁白正在念时返回 true，传给 `talk` 就能让嘴动起来 |
+| `registerCharacter(name, def)` | 注册新形象，见 `characters.md` |
 
 ## 等轴测（engine/iso.js）
 世界坐标：+x 往右下，+y 往左下，+z 往上。`o = { ox, oy, s }` 指定原点的屏幕位置和一个单位的像素大小（默认 `ISO = { ox: 960, oy: 380, s: 64 }`）。每个函数都接受 `o`。
@@ -104,7 +103,8 @@
 - `bgDust(b, rgb, rand, n, maxAlpha, size)`：随机撒点，用来做纸纤维、粉笔灰、星空
 
 ## 引擎行为
-- `index.html` 只引用 `engine/load.js`，由它按顺序加载 core、mascot、iso 和全部内置风格。
+- `index.html` 只引用 `engine/load.js`，由它按顺序加载 core、characters、iso、内置形象和全部内置风格。
+- 每帧开头调用 `ctx.reset()`，彻底清空上一帧留下的变换、裁剪、滤镜、混合模式和阴影。
 - 场景切换时按新场景风格的 `transition` 转场，时长 0.6 秒；上一幕停在最后一帧。
 - 第一幕开头淡入 0.4 秒，最后一幕结尾淡出 1 秒。
 - 没有定义 CAMS 的场景，默认 3.5% 缓慢推近。
