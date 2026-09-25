@@ -14,6 +14,17 @@ registerStyle('pixel', {
   texture: { grain: 0, vignette: null },
   transition: 'dissolve',
   subtitle: { plate: true },
+  // twinkling pixel stars and a blocky cloud drifting across
+  ambient(c, t, P, info) {
+    const r = mulberry32(info.seed), px = 6;
+    for (let i = 0; i < 40; i++) {
+      const x = Math.floor((r() * W) / px) * px, y = Math.floor((r() * H * 0.5) / px) * px, ph = r() * 10;
+      if (Math.sin(t * 3 + ph) > 0.2) { c.fillStyle = i % 5 ? '#fff1e8' : '#ffec27'; c.fillRect(x, y, px, px); }
+    }
+    const cx = ((r() * W + t * 40) % (W + 400)) - 200, cy = Math.floor((H * (0.15 + r() * 0.2)) / px) * px;
+    c.fillStyle = 'rgba(194, 195, 199, 0.35)';
+    [[0, 2, 30], [4, 0, 16], [6, 1, 22], [2, 3, 34]].forEach(([dx, dy, w]) => c.fillRect(Math.floor(cx / px) * px + dx * px * 2, cy + dy * px * 2, w * px, px * 2));
+  },
   background(b, w, h, P, r) {
     const px = 6; // one "pixel" after 1/3 downscale is 3px; use a 6px grid so details survive
     const snap = (v) => Math.floor(v / px) * px;

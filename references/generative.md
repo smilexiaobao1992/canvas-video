@@ -15,6 +15,30 @@
 | `networkField(t, { rect, n=70, linkDist=180, seed, color, accent, drift, speed, dot, signals=8, alpha, lit })` | 粒子网络：点在噪声驱动下漂移，距离近于 linkDist 的点之间连线，signals 个光点沿连线跳动。`lit(i, p)` 返回 0..1，用来点亮部分节点（比如离焦点近的）。最多 120 个点。适合做神经网络、知识图谱、“AI 大脑”的背景，建议 alpha 取 0.25 到 0.5，不要抢主体 |
 | `flowField(t, { rect, n=220, scale, speed, life, trail, color, width, alpha, seed })` | 流场：粒子顺着噪声场留下渐隐的流线，最多 400 条。适合表现“数据在流动”、气流、思绪。只想在一块区域里显示时，外面用 `ctx.clip()` 裁剪 |
 
+## 场景氛围 backdrop
+在 script.json 里写全局 `"backdrop"`，或者给场景单独写 `"backdrop"` 和 `"backdropOpacity"`（0..1）。氛围层画在风格底图之上、场景内容之下，带视差，每一幕用场景 id 做种子，位置各不相同。
+
+| 名字 | 效果 |
+|---|---|
+| `network` | 全屏粒子神经网络，低透明度 |
+| `flow` | 噪声流场 |
+| `particles` | 缓缓上浮的光点 |
+| `spotlight` | 从上方打下的一束柔光 |
+| `gradient` | 三团颜色（note、ok、mark）缓慢漂移的大渐变光 |
+| `rings` | 同心圆波纹缓慢扩散 |
+| `space` | 太空：深色星空、星云、闪烁的星星，偶尔划过流星 |
+| `sunset` / `dusk` / `dawn` | 日落 / 黄昏 / 黎明的天空渐变 |
+| `none` | 不加（默认） |
+
+`space`、`sunset`、`dusk`、`dawn` 会盖住风格底图，整片换成天空，所以要和风格搭配：`space`、`dusk` 这类深色天空配深色风格（blueprint、neon、pixel），`dawn` 这类浅色天空配浅色风格，不然文字会看不清。
+
+自定义：`registerBackdrop(name, (t, info) => {...})`，info 里有 `seed`、`sceneIndex`、`opacity`。也可以在场景里手动画：`drawBackdrop(name, t, opts)`。名字写错会在启动时报错，并列出可用的名字。
+
+## 手绘质感
+| 函数 | 说明 |
+|---|---|
+| `pencilFill({ color, angle=-0.9, spacing=7, width=1.6, cross=false, alpha=0.8, seed, bounds })` | 用铅笔排线填充**当前路径**（先 `beginPath` 画好形状，再调用它），像彩铅涂色；`cross: true` 交叉排线。可以先用浅色 `fill()` 打底再叠排线 |
+
 ## 粒子发射器
 `emitter(t, { preset, x, y, start, stop, seed, color, ... })`，其中 **start、stop 是全局秒数**，常写 `S.start + S.word(0, '某词')`。每个粒子都能按时间直接算出来，不保存任何状态。
 

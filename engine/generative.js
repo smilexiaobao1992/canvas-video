@@ -369,3 +369,127 @@ function bounce(t, o = {}) {
   }
   return floor;
 }
+
+// ---------- pencil textures ----------
+// fill the current path with pencil hatching (like colored-pencil or cross-hatched shading); call right after building a path
+function pencilFill(o = {}) {
+  const { color = C.ink, angle = -0.9, spacing = 7, width = 1.6, cross = false, alpha = 0.8, seed = 3, bounds = null } = o;
+  const r = mulberry32(seed);
+  ctx.save(); ctx.clip();
+  const b = bounds || { x: -W, y: -H, w: W * 3, h: H * 3 };
+  const cx = b.x + b.w / 2, cy = b.y + b.h / 2, L = Math.hypot(b.w, b.h);
+  const pass = (ang) => {
+    ctx.save(); ctx.translate(cx, cy); ctx.rotate(ang);
+    ctx.strokeStyle = color; ctx.lineCap = 'round';
+    for (let y = -L / 2; y < L / 2; y += spacing) {
+      ctx.globalAlpha = alpha * (0.45 + 0.55 * r()); ctx.lineWidth = width * (0.6 + r() * 0.8);
+      const j = (r() - 0.5) * spacing * 0.6;
+      ctx.beginPath(); ctx.moveTo(-L / 2, y + j); ctx.quadraticCurveTo(0, y + j + (r() - 0.5) * 6, L / 2, y + j + (r() - 0.5) * 4); ctx.stroke();
+    }
+    ctx.restore();
+  };
+  pass(angle);
+  if (cross) pass(angle + Math.PI / 2.4);
+  ctx.restore();
+}
+
+// ---------- built-in backdrops (scene atmosphere; pick with "backdrop" in script.json) ----------
+// each gets info = { seed, sceneIndex, opacity } and draws in world space; the engine adds parallax
+registerBackdrop('network', (t, info) => {
+  networkField(t, { rect: { x0: -60, y0: -60, x1: W + 60, y1: H + 60 }, n: Math.round(70 * (W * H) / (1920 * 1080)), linkDist: 200, seed: info.seed, alpha: 0.3 * info.opacity, signals: 10, dot: 3.5 });
+});
+registerBackdrop('flow', (t, info) => {
+  flowField(t, { rect: { x0: -100, y0: -100, x1: W + 100, y1: H + 100 }, n: 180, seed: info.seed, color: C.note, alpha: 0.28 * info.opacity, width: 1.6, speed: 70 });
+});
+registerBackdrop('particles', (t, info) => {
+  // slow luminous motes rising through the whole frame
+  const r = mulberry32(info.seed), n = 46;
+  ctx.save();
+  for (let i = 0; i < n; i++) {
+    const x0 = r() * W, speed = 18 + r() * 40, size = 2 + r() * 5, ph = r() * 100;
+    const y = H + 40 - (((t + ph) * speed) % (H + 80));
+    const x = x0 + Math.sin((t + ph) * 0.6) * 30;
+    const a = (0.25 + 0.35 * Math.sin((t + ph) * 1.3) ** 2) * info.opacity;
+    lightBlob(x, y, size * 5, i % 3 ? C.note : C.ok, a * 0.5);
+    ctx.globalAlpha = a; ctx.fillStyle = i % 3 ? C.note : C.ok;
+    ctx.beginPath(); ctx.arc(x, y, size * 0.6, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.restore();
+});
+registerBackdrop('spotlight', (t, info) => {
+  // a cone of light from above onto the content area, gently swaying
+  const r = mulberry32(info.seed), cx = lerp(SAFE.x0, SAFE.x1, 0.35 + r() * 0.3) + Math.sin(t * 0.3) * 40;
+  ctx.save();
+  ctx.globalAlpha = (STYLE.dark ? 0.22 : 0.35) * info.opacity;
+  const g = ctx.createLinearGradient(0, -50, 0, H);
+  g.addColorStop(0, STYLE.dark ? 'rgba(255, 255, 255, 0.55)' : 'rgba(255, 250, 235, 0.95)'); g.addColorStop(1, 'rgba(255, 255, 255, 0)');
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.moveTo(cx - 120, -50); ctx.lineTo(cx + 120, -50); ctx.lineTo(cx + W * 0.36, H); ctx.lineTo(cx - W * 0.36, H); ctx.closePath(); ctx.fill();
+  ctx.restore();
+  lightBlob(cx, H * 0.62, Math.max(W, H) * 0.32, STYLE.dark ? '#ffffff' : '#fff6dc', (STYLE.dark ? 0.12 : 0.3) * info.opacity);
+});
+registerBackdrop('gradient', (t, info) => {
+  // two large colored glows drifting slowly; placement differs per scene
+  const r = mulberry32(info.seed), R = Math.max(W, H) * 0.55;
+  const cols = [C.note, C.ok, C.mark];
+  for (let k = 0; k < 3; k++) {
+    const bx = r() * W, by = r() * H, sp = 0.05 + r() * 0.05;
+    lightBlob(bx + Math.sin(t * sp * 6 + k) * W * 0.12, by + Math.cos(t * sp * 5 + k * 2) * H * 0.12, R * (0.7 + r() * 0.5), cols[k], (STYLE.dark ? 0.22 : 0.16) * info.opacity);
+  }
+});
+// full-bleed skies: they cover the style's base; pair dark skies with dark styles (blueprint / neon / pixel)
+function skyGradient(stops) {
+  const g = ctx.createLinearGradient(0, -H * 0.1, 0, H * 1.1);
+  stops.forEach(([o, col]) => g.addColorStop(o, col));
+  ctx.fillStyle = g; ctx.fillRect(-W, -H, W * 3, H * 3);
+}
+function starField(t, seed, n = 220, opacity = 1) {
+  const r = mulberry32(seed);
+  ctx.save(); ctx.fillStyle = '#ffffff';
+  for (let i = 0; i < n; i++) {
+    const x = r() * W * 1.2 - W * 0.1, y = r() * H * 1.2 - H * 0.1, sz = r() < 0.08 ? 2.6 : 1.3, ph = r() * 10;
+    ctx.globalAlpha = opacity * (0.35 + 0.65 * (0.5 + 0.5 * Math.sin(t * (1 + ph * 0.2) + ph)));
+    ctx.fillRect(x, y, sz, sz);
+  }
+  ctx.restore();
+}
+registerBackdrop('space', (t, info) => {
+  const r = mulberry32(info.seed);
+  skyGradient([[0, '#05060f'], [0.6, '#0d1030'], [1, '#1a1640']]);
+  lightBlob(r() * W, r() * H * 0.7, Math.max(W, H) * 0.45, '#5b3fb8', 0.25 * info.opacity);
+  lightBlob(r() * W, r() * H, Math.max(W, H) * 0.35, '#1f6fb8', 0.18 * info.opacity);
+  starField(t, info.seed, 240, info.opacity);
+  // an occasional shooting star
+  const u = frac(t / 7 + r());
+  if (u < 0.12) {
+    const k = u / 0.12, sx = lerp(W * 0.2, W * 0.8, r()), sy = H * 0.15;
+    ctx.save(); ctx.globalAlpha = pingPong(k) * info.opacity; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(sx + k * 420, sy + k * 160); ctx.lineTo(sx + k * 420 - 140, sy + k * 160 - 53); ctx.stroke(); ctx.restore();
+  }
+});
+registerBackdrop('sunset', (t, info) => {
+  skyGradient([[0, '#3a2a6e'], [0.5, '#a3557e'], [1, '#f1a36a']]);
+  lightBlob(W * 0.5 + Math.sin(t * 0.05) * 60, H * 1.02, W * 0.6, '#ffd08a', 0.45 * info.opacity);
+  starField(t, info.seed, 50, 0.4 * info.opacity);
+});
+registerBackdrop('dusk', (t, info) => {
+  skyGradient([[0, '#141a45'], [0.55, '#5d4691'], [1, '#e08878']]);
+  starField(t, info.seed, 120, 0.7 * info.opacity);
+  lightBlob(W * 0.3 + Math.sin(t * 0.06) * 80, H * 0.9, W * 0.5, '#ff9e7a', 0.25 * info.opacity);
+});
+registerBackdrop('dawn', (t, info) => {
+  skyGradient([[0, '#e8837a'], [0.55, '#f2b08a'], [1, '#f7dc8f']]);
+  lightBlob(W * 0.5, H * 0.45 + Math.sin(t * 0.1) * 20, W * 0.45, '#fff3c4', 0.5 * info.opacity);
+});
+registerBackdrop('rings', (t, info) => {
+  // concentric ripples expanding from a point behind the content
+  const r = mulberry32(info.seed), cx = lerp(SAFE.x0, SAFE.x1, 0.3 + r() * 0.4), cy = lerp(SAFE.y0, SAFE.y1, 0.35 + r() * 0.3);
+  const maxR = Math.hypot(W, H) * 0.7;
+  ctx.save(); ctx.strokeStyle = C.note; ctx.lineWidth = 2;
+  for (let k = 0; k < 7; k++) {
+    const u = frac(t * 0.08 + k / 7);
+    ctx.globalAlpha = (1 - u) * 0.35 * info.opacity;
+    ctx.beginPath(); ctx.arc(cx, cy, 60 + u * maxR, 0, Math.PI * 2); ctx.stroke();
+  }
+  ctx.restore();
+});

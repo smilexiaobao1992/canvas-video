@@ -116,11 +116,17 @@
 - `bgGuides(b, color)`：淡淡的辅助圆、虚线参考线、十字标记
 - `bgDust(b, rgb, rand, n, maxAlpha, size)`：随机撒点，用来做纸纤维、粉笔灰、星空
 
+## 背景层（写风格或氛围时用）
+- `sprite(key, w, h, draw)`：第一次调用时把 `draw(c, w, h)` 画进离屏画布并缓存，之后直接返回这张贴图；耗时的模糊、渐变都用它
+- `lightBlob(x, y, r, color, alpha=1, c=ctx)`：柔和的圆形光斑（缓存好的径向渐变贴图）
+- `registerBackdrop(name, fn)` / `drawBackdrop(name, t, opts)`：注册和手动绘制场景氛围，见 generative.md
+- `applyCam(cam, k, overscan=1)`：按比例 k 套用镜头变换，引擎用它实现视差
+
 ## 引擎行为
 - `index.html` 只引用 `engine/load.js`，由它按顺序加载 core、characters、iso、内置形象和全部内置风格。
 - 每帧开头调用 `ctx.reset()`，彻底清空上一帧留下的变换、裁剪、滤镜、混合模式和阴影。
 - 场景切换时按新场景风格的 `transition` 转场，时长 0.6 秒；上一幕停在最后一帧。
 - 第一幕开头淡入 0.4 秒，最后一幕结尾淡出 1 秒。
 - 没有定义 CAMS 的场景，默认 3.5% 缓慢推近。
-- 每帧绘制顺序：背景 → 镜头内的场景内容 → 风格叠加层 → 像素化 → 颗粒 → 暗角 → 角标 → 章节小圆环 → 字幕。
+- 每帧绘制顺序：底图 → 风格环境层 `ambient` → 场景氛围 `backdrop` → 镜头内的场景内容（前三层按 0.12 / 0.35 / 0.6 的比例跟随镜头，形成视差） → 风格叠加层 → 像素化 → 颗粒 → 暗角 → 角标 → 章节小圆环 → 字幕。
 - 字幕自动折行（横屏最多 2 行，竖屏最多 3 行，放不下就缩小字号）；`subtitles.highlight` 开启后，按逐词时间把念过的字加深。

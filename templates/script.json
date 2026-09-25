@@ -20,6 +20,7 @@
   "scenes": [
     {
       "id": "hello",
+      "backdrop": "spotlight",
       "title": "开场",
       "lead": 0.8,
       "hold": 1.0,
@@ -30,6 +31,7 @@
     },
     {
       "id": "idea",
+      "backdrop": "particles",
       "title": "核心思路",
       "style": "blueprint",
       "lead": 0.5,

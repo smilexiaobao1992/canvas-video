@@ -10,6 +10,16 @@ registerStyle('ink', {
   hatch: { rgb: '31, 28, 26', spacing: 7 },
   texture: { grain: 10, vignette: 'rgba(60, 50, 30, 0.16)' },
   transition: 'blot',
+  // mist bands drifting through the valleys (pre-blurred sprites, so each frame only moves images)
+  ambient(c, t, P, info) {
+    const r = mulberry32(info.seed);
+    const mist = sprite('ink-mist', 1400, 260, (b) => { b.filter = 'blur(30px)'; b.fillStyle = 'rgba(255, 255, 255, 0.9)'; b.beginPath(); b.ellipse(700, 130, 600, 70, 0, 0, Math.PI * 2); b.fill(); });
+    for (let k = 0; k < 3; k++) {
+      const y = H * (0.55 + k * 0.12) + (r() - 0.5) * 40, sp = 14 + r() * 16, x = ((r() * W + t * sp) % (W + 1400)) - 1400;
+      c.globalAlpha = 0.45; c.drawImage(mist, x, y - 130, 1400, 260);
+    }
+    c.globalAlpha = 1;
+  },
   background(b, w, h, P, r) {
     b.fillStyle = P.bg; b.fillRect(0, 0, w, h);
     // rice paper fibres

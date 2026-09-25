@@ -224,6 +224,22 @@ function circleMark(x, y, rx, ry, p, o = {}) {
   pathWithArrow((u) => { const a = off + u * Math.PI * 2 * turns; const k = 1 + 0.06 * Math.sin(u * 9 + seed); return { x: x + Math.cos(a) * rx * k, y: y + Math.sin(a) * ry * k }; }, easeInOut(p), { color, width, head: false });
 }
 
+// radial speed lines rushing toward (cx, cy); p: 0..1 over the burst (lines fade in and out)
+function speedLines(cx, cy, p, o = {}) {
+  const { n = 70, color = STYLE.dark ? '#ffffff' : C.ink, width = 3, inner = 0.25, seed = 11, alpha = 0.6 } = o;
+  if (p <= 0 || p >= 1) return;
+  const r = mulberry32(seed), R = Math.hypot(W, H) * 0.75, a0 = pingPong(p);
+  ctx.save(); ctx.strokeStyle = color; ctx.lineCap = 'round';
+  for (let i = 0; i < n; i++) {
+    const ang = r() * Math.PI * 2, len = 0.12 + r() * 0.25, ph = r();
+    const u = frac(p * 1.6 + ph), rr0 = lerp(R, R * inner, u), rr1 = rr0 + R * len * (1 - u * 0.5);
+    ctx.globalAlpha = alpha * a0 * (0.4 + 0.6 * r());
+    ctx.lineWidth = width * (0.5 + r());
+    ctx.beginPath(); ctx.moveTo(cx + Math.cos(ang) * rr0, cy + Math.sin(ang) * rr0); ctx.lineTo(cx + Math.cos(ang) * rr1, cy + Math.sin(ang) * rr1); ctx.stroke();
+  }
+  ctx.restore();
+}
+
 // ---------- more transitions ----------
 Object.assign(TRANSITIONS, {
   // circle closes on the old scene, then opens on the new one
@@ -271,6 +287,25 @@ Object.assign(TRANSITIONS, {
     ctx.drawImage(prev, 0, 0, W, H / 2, 0, -d, W, H / 2);
     ctx.drawImage(prev, 0, H / 2, W, H / 2, 0, H / 2 + d, W, H / 2);
     ctx.restore();
+  },
+  // dive into a point of the old scene (e.g. an eye); the new scene opens out of it, with speed lines
+  portal(drawNext, wp, S) {
+    const [fx, fy] = S ? S.transitionFocus : [W / 2, H / 2];
+    const prev = grabPrev(), next = renderOff(drawNext);
+    ctx.save();
+    ctx.fillStyle = '#05060a'; ctx.fillRect(0, 0, W, H);
+    const s1 = Math.exp(easeIn(clamp(wp / 0.75)) * 2.6);
+    ctx.globalAlpha = 1 - prog(wp, 0.55, 0.85);
+    ctx.translate(fx, fy); ctx.scale(s1, s1); ctx.translate(-fx, -fy); ctx.drawImage(prev, 0, 0);
+    ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1;
+    const open = easeInOut(prog(wp, 0.3, 1)), R = Math.hypot(W, H) * open;
+    if (R > 0) {
+      ctx.beginPath(); ctx.arc(lerp(fx, W / 2, open), lerp(fy, H / 2, open), R, 0, Math.PI * 2); ctx.clip();
+      const s2 = lerp(0.35, 1, open);
+      ctx.translate(lerp(fx, W / 2, open), lerp(fy, H / 2, open)); ctx.scale(s2, s2); ctx.drawImage(next, -W / 2, -H / 2);
+    }
+    ctx.restore();
+    speedLines(fx, fy, prog(wp, 0.05, 0.8), { color: '#ffffff', alpha: 0.7 });
   },
   // venetian blinds
   shutter(drawNext, wp) {

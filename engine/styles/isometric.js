@@ -10,6 +10,14 @@ registerStyle('isometric', {
   hatch: { rgb: '40, 50, 90', spacing: 7 },
   texture: { grain: 0, vignette: 'rgba(40, 50, 90, 0.08)' },
   transition: 'fade',
+  // translucent iso cubes bobbing in the air
+  ambient(c, t, P, info) {
+    const r = mulberry32(info.seed);
+    for (let k = 0; k < 6; k++) {
+      const o = { ox: r() * W, oy: r() * H, s: 26 + r() * 20 }, z = Math.sin(t * 0.8 + k) * 0.4;
+      isoBox(0, 0, z, 1, 1, 1, { o, color: [P.note, P.ok, P.surfaceAlt][k % 3], alpha: 0.22, shadow: false, lw: 1.5 });
+    }
+  },
   background(b, w, h, P) {
     b.fillStyle = P.bg; b.fillRect(0, 0, w, h);
     const g = b.createRadialGradient(w * 0.5, h * 0.35, 50, w * 0.5, h * 0.35, w * 0.7);

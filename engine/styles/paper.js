@@ -10,6 +10,18 @@ registerStyle('paper', {
   hatch: { rgb: '59, 42, 32', spacing: 7 },
   texture: { grain: 16, vignette: 'rgba(90, 60, 30, 0.13)' },
   transition: 'wipe',
+  // drifting warm light patches and floating dust; layout differs per scene (info.seed)
+  ambient(c, t, P, info) {
+    const r = mulberry32(info.seed), R = Math.max(W, H) * 0.34;
+    for (let k = 0; k < 2; k++) { const bx = r() * W, by = r() * H; lightBlob(bx + Math.sin(t * 0.12 + k * 2) * W * 0.1, by + Math.cos(t * 0.1 + k) * H * 0.1, R, '#fff4dc', 0.6); }
+    c.fillStyle = 'rgba(120, 90, 50, 0.45)';
+    for (let i = 0; i < 30; i++) {
+      const x0 = r() * W, y0 = r() * H, sp = 6 + r() * 10, ph = r() * 50, sz = 1.4 + r() * 1.6;
+      c.globalAlpha = 0.25 + 0.45 * Math.sin(t * 0.8 + ph) ** 2;
+      c.beginPath(); c.arc(((x0 + t * sp) % (W + 40)) - 20, y0 + Math.sin(t * 0.4 + ph) * 25, sz, 0, Math.PI * 2); c.fill();
+    }
+    c.globalAlpha = 1;
+  },
   background(b, w, h, P, r) {
     b.fillStyle = P.bg; b.fillRect(0, 0, w, h);
     b.save(); b.translate(w / 2, h / 2); b.rotate(Math.PI / 4);

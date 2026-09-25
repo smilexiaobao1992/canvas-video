@@ -10,6 +10,11 @@ registerStyle('minimal', {
   hatch: { rgb: '20, 24, 40', spacing: 7 },
   texture: { grain: 0, vignette: null },
   transition: 'fade',
+  // large soft color fields drifting slowly
+  ambient(c, t, P, info) {
+    const r = mulberry32(info.seed), R = Math.max(W, H) * 0.5;
+    [P.note, P.ok, P.mark].forEach((col, k) => lightBlob(r() * W + Math.sin(t * 0.07 + k * 2) * W * 0.15, r() * H + Math.cos(t * 0.06 + k) * H * 0.15, R * (0.7 + r() * 0.4), col, 0.09));
+  },
   background(b, w, h, P) {
     b.fillStyle = P.bg; b.fillRect(0, 0, w, h);
     b.fillStyle = 'rgba(20, 24, 40, 0.07)';

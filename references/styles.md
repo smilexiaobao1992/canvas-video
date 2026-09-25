@@ -22,12 +22,29 @@ registerStyle('my-style', {
   hardShadow: { alpha: 0.35, blur: 0 },       // shadow 为 'hard' 时的不透明度和模糊（剪纸 3，像素 0）
   pixelate: 0,                         // 大于 1 时整帧按 1/N 分辨率渲染后放大（像素风格用 3）；字幕和角标不受影响
   texture: { grain: 16, vignette: 'rgba(90, 60, 30, 0.13)' },  // grain 取 0-40；vignette 设为 null 表示不要暗角
-  transition: 'wipe',                  // 默认转场，可选：wipe、erase、blot、slide、dissolve、fade、iris、zoom、glitch、split、shutter、cut（后五个见 motion.md）
+  transition: 'wipe',                  // 默认转场，可选：wipe、erase、blot、slide、dissolve、fade、iris、zoom、glitch、split、shutter、portal、cut（iris 到 portal 见 motion.md）
   subtitle: { size: 36, color: null, plate: false },           // plate：字幕加半透明底板
   background(b, w, h, P, rand) {},     // 只画一次，缓存在离屏画布里；b 是离屏画布的 2D 上下文，P 是调色板
+  ambient(c, t, P, info) {},           // 可选，每帧画的环境动画（光斑、浮尘、雾、云）；info = { seed, sceneIndex, t, lt }
   overlay(c, t, P) {},                 // 可选，每帧叠加在场景上面（在颗粒、暗角之前），比如扫描线、闪烁
 });
 ```
+
+## 背景分层与视差
+每帧的背景由远到近分四层，镜头推近或平移时，越远的层动得越少，产生纵深：
+
+| 层 | 来源 | 跟镜头移动的比例 |
+|---|---|---|
+| 底图 | `background`（静态缓存） | 0.12 |
+| 环境层 | `ambient`（风格提供，每帧画） | 0.35 |
+| 氛围层 | 场景的 `backdrop`（见 generative.md） | 0.6 |
+| 内容 | 场景函数 | 1 |
+
+写 `ambient` 的要求：
+- 必须是 t 的纯函数；随机数用 `mulberry32(info.seed)`，这样每一幕的光斑、云、雾位置都不一样，同一幕每帧又完全一致。
+- 透明度要低，不要抢内容；也不要画进右上角角标和底部字幕的区域。
+- 每帧开销控制在 2ms 以内：模糊、渐变这类耗时的东西用 `sprite(key, w, h, draw)` 预先画成贴图缓存，每帧只 `drawImage`；柔和光斑直接用 `lightBlob(x, y, r, color, alpha)`。
+- 镜头推近时各层会放大一点留出余量，画的范围覆盖 0..W、0..H 即可。
 
 ## 内置风格
 

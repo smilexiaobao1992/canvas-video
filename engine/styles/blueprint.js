@@ -11,6 +11,19 @@ registerStyle('blueprint', {
   hatch: { rgb: '143, 163, 255', spacing: 7 },
   texture: { grain: 16, vignette: 'rgba(0, 0, 10, 0.38)' },
   transition: 'wipe',
+  // drifting major grid, a scan band every ~6s, and a slow cold glow
+  ambient(c, t, P, info) {
+    const r = mulberry32(info.seed), off = (t * 12) % 200;
+    c.strokeStyle = 'rgba(143, 163, 255, 0.08)'; c.lineWidth = 1; c.beginPath();
+    for (let x = -200 + off; x < W + 200; x += 200) { c.moveTo(x, 0); c.lineTo(x, H); }
+    for (let y = -200 + off * 0.6; y < H + 200; y += 200) { c.moveTo(0, y); c.lineTo(W, y); }
+    c.stroke();
+    const y = lerp(-240, H + 240, frac(t / 6 + r()));
+    const g = c.createLinearGradient(0, y - 140, 0, y + 140);
+    g.addColorStop(0, 'rgba(143, 163, 255, 0)'); g.addColorStop(0.5, 'rgba(143, 163, 255, 0.07)'); g.addColorStop(1, 'rgba(143, 163, 255, 0)');
+    c.fillStyle = g; c.fillRect(0, y - 140, W, 280);
+    lightBlob(r() * W + Math.sin(t * 0.1) * 120, r() * H, Math.max(W, H) * 0.42, P.note, 0.13);
+  },
   background(b, w, h, P, r) {
     b.fillStyle = P.bg; b.fillRect(0, 0, w, h);
     for (const [step, a] of [[40, 0.05], [200, 0.1]]) {

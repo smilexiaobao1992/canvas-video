@@ -17,6 +17,17 @@ registerStyle('neon', {
   texture: { grain: 10, vignette: 'rgba(0, 0, 0, 0.5)' },
   transition: 'wipe',
   subtitle: { plate: true },
+  // floor grid rolling toward the viewer, twinkling stars, breathing horizon glow
+  ambient(c, t, P, info) {
+    const r = mulberry32(info.seed), hy = H * 0.64, N = 14;
+    c.strokeStyle = 'rgba(255, 61, 127, 0.3)'; c.lineWidth = 1.6; c.beginPath();
+    for (let k = 0; k < N; k++) { const y = hy + Math.pow(frac((k + t * 0.6) / N), 2.2) * (H - hy); c.moveTo(0, y); c.lineTo(W, y); }
+    c.stroke();
+    lightBlob(W / 2, hy, W * 0.45, '#ff3d7f', 0.16 + 0.06 * Math.sin(t * 1.4));
+    c.fillStyle = '#ffffff';
+    for (let i = 0; i < 60; i++) { const x = r() * W, y = r() * hy * 0.95, ph = r() * 20; c.globalAlpha = 0.15 + 0.7 * Math.max(0, Math.sin(t * 2 + ph)) ** 3; c.fillRect(x, y, 2, 2); }
+    c.globalAlpha = 1;
+  },
   background(b, w, h, P, r) {
     const g = b.createLinearGradient(0, 0, 0, h);
     g.addColorStop(0, '#0a0816'); g.addColorStop(1, '#170c30');

@@ -20,6 +20,7 @@
   "scenes": [
     {
       "id": "text",
+      "backdrop": "spotlight",
       "title": "文字动效",
       "style": "paper",
       "lead": 0.4,
@@ -30,6 +31,7 @@
     },
     {
       "id": "morph",
+      "backdrop": "gradient",
       "title": "形状变形",
       "style": "blueprint",
       "transition": "iris",
@@ -41,6 +43,7 @@
     },
     {
       "id": "charts",
+      "backdrop": "particles",
       "title": "图表",
       "style": "minimal",
       "transition": "zoom",
@@ -52,6 +55,7 @@
     },
     {
       "id": "numbers",
+      "backdrop": "rings",
       "title": "数字",
       "style": "papercut",
       "transition": "slide",
@@ -63,6 +67,7 @@
     },
     {
       "id": "code",
+      "backdrop": "flow",
       "title": "代码与终端",
       "style": "neon",
       "transition": "glitch",
@@ -74,6 +79,7 @@
     },
     {
       "id": "chat",
+      "backdrop": "gradient",
       "title": "对话界面",
       "style": "minimal",
       "transition": "split",
@@ -85,6 +91,7 @@
     },
     {
       "id": "flow",
+      "backdrop": "network",
       "title": "流程图",
       "style": "blueprint",
       "transition": "shutter",
@@ -96,6 +103,7 @@
     },
     {
       "id": "table",
+      "backdrop": "particles",
       "title": "时间轴与对比",
       "style": "chalk",
       "transition": "erase",
@@ -129,6 +137,7 @@
     },
     {
       "id": "gen3",
+      "backdrop": "gradient",
       "title": "三维与物理",
       "style": "minimal",
       "transition": "fade",
@@ -140,6 +149,7 @@
     },
     {
       "id": "icons",
+      "backdrop": "rings",
       "title": "图标",
       "style": "ink",
       "transition": "blot",

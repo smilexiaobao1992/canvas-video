@@ -11,6 +11,7 @@
   "scenes": [
     {
       "id": "intro",
+      "backdrop": "spotlight",
       "title": "开场",
       "lead": 0.8,
       "hold": 0.8,
@@ -21,6 +22,7 @@
     },
     {
       "id": "token",
+      "backdrop": "network",
       "title": "切成 token",
       "style": "blueprint",
       "lead": 0.6,
@@ -43,6 +45,7 @@
     },
     {
       "id": "next",
+      "backdrop": "particles",
       "title": "猜下一个字",
       "lead": 0.5,
       "hold": 1.6,
@@ -53,6 +56,7 @@
     },
     {
       "id": "direct",
+      "backdrop": "gradient",
       "title": "一步到位？",
       "lead": 0.5,
       "hold": 1.2,
@@ -63,6 +67,7 @@
     },
     {
       "id": "cot",
+      "backdrop": "flow",
       "title": "思维链",
       "lead": 0.5,
       "hold": 1.5,
@@ -74,6 +79,7 @@
     },
     {
       "id": "reason",
+      "backdrop": "gradient",
       "title": "推理模型",
       "style": "blueprint",
       "lead": 0.5,
@@ -86,6 +92,7 @@
     },
     {
       "id": "outro",
+      "backdrop": "rings",
       "title": "边说边想",
       "lead": 0.5,
       "hold": 2.5,

@@ -11,6 +11,21 @@ registerStyle('papercut', {
   hardShadow: { alpha: 0.28, blur: 3 },
   texture: { grain: 8, vignette: 'rgba(20, 50, 50, 0.14)' },
   transition: 'slide',
+  // paper clouds with hard shadows floating across the sky
+  ambient(c, t, P, info) {
+    const r = mulberry32(info.seed);
+    const cloud = sprite('paper-cloud', 360, 170, (b) => {
+      const puffs = [[90, 110, 60], [160, 80, 72], [240, 100, 58], [300, 118, 42]];
+      const shape = () => { b.beginPath(); puffs.forEach(([x, y, rr2]) => { b.moveTo(x + rr2, y); b.arc(x, y, rr2, 0, Math.PI * 2); }); b.rect(50, 110, 270, 40); };
+      b.save(); b.translate(8, 10); b.filter = 'blur(3px)'; shape(); b.fillStyle = 'rgba(25, 45, 50, 0.25)'; b.fill(); b.restore();
+      shape(); b.fillStyle = '#fffaf0'; b.fill();
+    });
+    for (let k = 0; k < 2; k++) {
+      const sc = 0.6 + r() * 0.5, y = H * (0.2 + r() * 0.14), x = ((r() * W + t * (12 + k * 8)) % (W + 400)) - 360;
+      c.globalAlpha = 0.9; c.drawImage(cloud, x, y, 360 * sc, 170 * sc);
+    }
+    c.globalAlpha = 1;
+  },
   background(b, w, h, P, r) {
     b.fillStyle = P.bg; b.fillRect(0, 0, w, h);
     bgDust(b, '255, 255, 255', r, 3000, 0.12, 1.4);

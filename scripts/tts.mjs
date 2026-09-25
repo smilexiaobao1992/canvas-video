@@ -88,6 +88,7 @@ for (const scene of script.scenes) {
   scenes.push({
     id: scene.id, title: scene.title || scene.id, style: scene.style || null, cast: scene.cast || null,
     transition: scene.transition || null, transitionDuration: scene.transitionDuration ?? null,
+    backdrop: scene.backdrop || null, backdropOpacity: scene.backdropOpacity ?? null, transitionFocus: scene.transitionFocus || null,
     start: +sceneStart.toFixed(3), end: +cursor.toFixed(3),
   });
 }
@@ -113,6 +114,7 @@ const timeline = {
   duration, fps: script.fps || 30, format, width, height,
   style: script.style || 'paper', brand: script.brand ?? null, hud: script.hud ?? true,
   cast: script.cast || { host: 'bot' }, subtitles: script.subtitles || {}, audio: script.audio || {},
+  backdrop: script.backdrop || null, backdropOpacity: script.backdropOpacity ?? null,
   scenes, lines: lines.map(({ file, ...l }) => l),
 };
 writeFileSync('timeline.js', `window.TIMELINE = ${JSON.stringify(timeline)};\n`);

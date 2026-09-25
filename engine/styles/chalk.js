@@ -11,6 +11,18 @@ registerStyle('chalk', {
   hatch: { rgb: '241, 239, 230', spacing: 8 },
   texture: { grain: 24, vignette: 'rgba(0, 0, 0, 0.35)' },
   transition: 'erase',
+  // chalk dust drifting down and a slowly moving smudge of light
+  ambient(c, t, P, info) {
+    const r = mulberry32(info.seed);
+    lightBlob(r() * W + Math.sin(t * 0.08) * 150, r() * H, Math.max(W, H) * 0.35, '#ffffff', 0.05);
+    c.fillStyle = '#f1efe6';
+    for (let i = 0; i < 40; i++) {
+      const x0 = r() * W, sp = 10 + r() * 16, ph = r() * 100, sz = 1 + r() * 1.8;
+      c.globalAlpha = 0.18 + 0.25 * Math.sin(t + ph) ** 2;
+      c.beginPath(); c.arc(x0 + Math.sin(t * 0.3 + ph) * 30 - t * 4, (ph * 17 + t * sp) % (H + 20), sz, 0, Math.PI * 2); c.fill();
+    }
+    c.globalAlpha = 1;
+  },
   background(b, w, h, P, r) {
     b.fillStyle = P.bg; b.fillRect(0, 0, w, h);
     // eraser smudges and swirls

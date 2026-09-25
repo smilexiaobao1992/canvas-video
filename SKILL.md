@@ -75,6 +75,8 @@ node scripts/export.mjs --draft             # 15fps 草稿，最快
 | `format` | `16:9` 横屏 1920×1080（默认）、`9:16` 竖屏 1080×1920、`1:1` 方屏 1080×1080 |
 | `lead` / `hold` | 场景开始到第一句之间的留白 / 最后一句说完后画面停留的秒数（给收尾动画留时间） |
 | `style` / `transition` | 场景级设置会覆盖全局；转场还可以用 `transitionDuration` 调时长（默认 0.6 秒） |
+| `backdrop` | 场景氛围：`network`、`flow`、`particles`、`spotlight`、`gradient`、`rings`，天空类 `space`、`sunset`、`dusk`、`dawn`，或 `none`。全局写一个，场景可以单独覆盖，配合 `backdropOpacity`。见 `references/generative.md` |
+| `transitionFocus` | 转场用 `portal` 时，镜头钻进上一幕的哪个点 `[x, y]` |
 | `cast` | 把角色分配给形象，场景也可以写自己的 `cast` |
 | `subtitles.highlight` | 字幕逐字高亮：念过的字变深，没念到的字是浅色 |
 | `audio.music` | `calm`（舒缓）/ `bright`（明快）/ `deep`（深沉）/ 你自己的音乐文件路径 / `null` 不要音乐。有人声时音乐会自动压低 |
@@ -124,8 +126,10 @@ const SFX = { intro: (S) => [{ at: S.word(0, '智能体'), sound: 'pop' }] };   
 - **沿路径运动**：数据包、光点、角色沿路线走（`followPath`、`flowChart` 的 `flow: true`）。
 - **强调**：`burst` 放射线、`ripple` 涟漪、`circleMark` 手绘圈、`highlighter` 荧光笔、`glowPulse` 呼吸光、`confetti` 彩带。
 - **模拟真实界面**：`chatBubbles`（AI 先显示“正在输入”的三个点，再逐字回答）、`terminal`、`codeBlock`、`browserWindow`。讲 AI 或编程时特别有说服力。
-- **转场也是叙事**：`zoom` 推进到下一层细节、`glitch` 进入机器内部、`iris` 聚焦到一点、`split` 劈开揭示、`shutter` 百叶窗切换，都可以在场景里单独指定。
+- **转场也是叙事**：`zoom` 推进到下一层细节、`glitch` 进入机器内部、`iris` 聚焦到一点、`split` 劈开揭示、`shutter` 百叶窗切换、`portal` 钻进上一幕的某个物体（一只眼睛、一块屏幕）再从里面展开下一幕，都可以在场景里单独指定。
 - **生成式背景和模拟**：粒子神经网络 `networkField`（讲 AI、模型内部）、噪声流场 `flowField`（数据流动）、`emitter` 喷出数据、火花、烟、雪、`makeFlock` 鸟群（很多 Agent 协作）、`branchTree` 递归树（多条思路里选中一条）、3D 点云 `drawPointCloud`（词向量空间）、`rollDown`（梯度下降）。背景类效果要调低透明度，不要抢主体。
+- **背景氛围**：每一幕换一个 `backdrop`，让背景跟着内容变：讲模型内部用 `network`，数据流动用 `flow`，开场聚焦用 `spotlight`，收尾用 `rings`；讲“旅程”“从无到有”可以用天空 `space` → `dusk` → `dawn` 串起时间感。风格自带的环境层（光斑、雾、云、浮尘）会一直缓慢流动，镜头推近时背景各层有视差。
+- **手绘质感**：`pencilFill` 彩铅排线填充、`speedLines` 冲刺速度线，适合做有手作感的关键画面。
 - **声音配合动作**：弹出配 `pop`，答对配 `success`，出错配 `error`，大字登场前配 `swell`。
 
 声音和画面都要卡在台词的具体词上（用 `S.word`），这是“精致感”最主要的来源。

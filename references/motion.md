@@ -38,9 +38,10 @@
 | `confetti(p, { x0, x1, y0, fall, n, colors })` | 彩带从上往下落，p 从 0 到 1 是整个过程 |
 | `orbit(cx, cy, rx, ry, t, n, draw(i, x, y, depth), speed)` | 环绕运动，自动按远近排序；depth 从 -1 到 1，可以用来调远处的大小和透明度 |
 | `typingDots(x, y, t, { color, r, gap })` | “正在思考”的三个点 |
+| `speedLines(cx, cy, p, { n=70, color, width, inner, alpha, seed })` | 速度线：从四周冲向 (cx, cy) 的放射线，p 从 0 到 1 是一次冲刺（自动淡入淡出）。适合穿越、加速、冲进某个东西 |
 
 ## 转场（在 script.json 的场景里写 `"transition"`）
-`iris` 圆形收拢再展开 · `zoom` 穿越推进 · `glitch` 数字故障 · `split` 画面从中间劈开 · `shutter` 百叶窗；另外还有 core 里的 `wipe`、`erase`、`blot`、`slide`、`dissolve`、`fade`、`cut`。
+`iris` 圆形收拢再展开 · `zoom` 穿越推进 · `glitch` 数字故障 · `split` 画面从中间劈开 · `shutter` 百叶窗 · `portal` 镜头钻进上一幕的某个点（比如一只眼睛、一个屏幕、一个 token），下一幕从这个点展开，带速度线；用场景的 `"transitionFocus": [x, y]` 指定这个点（上一幕画面里的坐标，默认画面中心）；另外还有 core 里的 `wipe`、`erase`、`blot`、`slide`、`dissolve`、`fade`、`cut`。
 
 ## 组合示例
 ```js

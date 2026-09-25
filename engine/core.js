@@ -35,6 +35,7 @@ const STYLE_DEFAULTS = {
   subtitle: { size: 36, color: null, plate: false },
   background(b, w, h, P) { b.fillStyle = P.bg; b.fillRect(0, 0, w, h); },
   overlay: null,
+  ambient: null, // (c, t, P, info) => void: per-frame background motion, drawn with parallax behind the scene
 };
 function registerStyle(name, def) {
   const s = { ...STYLE_DEFAULTS, ...def, name };
@@ -349,6 +350,21 @@ function bgDust(b, rgb, r, n = 6000, maxAlpha = 0.06, size = 1.6) {
 // ---------- caches: backgrounds, vignette, grain ----------
 function makeCanvas(w, h) { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
 const BG_CACHE = {}, VIG_CACHE = {};
+// pre-rendered sprite, built once per key (put expensive blurs/gradients here and just move the sprite each frame)
+const SPRITES = {};
+function sprite(key, w, h, draw) {
+  if (!SPRITES[key]) { const c = makeCanvas(Math.ceil(w), Math.ceil(h)); draw(c.getContext('2d'), w, h); SPRITES[key] = c; }
+  return SPRITES[key];
+}
+// soft round light blob (radial gradient) as a cached sprite; drawn centered at (x, y) with radius r
+function lightBlob(x, y, r, color, alpha = 1, c = ctx) {
+  const img = sprite(`blob|${color}`, 256, 256, (b) => {
+    const g = b.createRadialGradient(128, 128, 0, 128, 128, 128);
+    g.addColorStop(0, color); g.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    b.fillStyle = g; b.fillRect(0, 0, 256, 256);
+  });
+  c.save(); c.globalAlpha *= alpha; c.drawImage(img, x - r, y - r, r * 2, r * 2); c.restore();
+}
 function bgOf(s) {
   if (!BG_CACHE[s.name]) { const c = makeCanvas(W, H); s.background(c.getContext('2d'), W, H, s.palette, mulberry32(7)); BG_CACHE[s.name] = c; }
   return BG_CACHE[s.name];
@@ -392,14 +408,37 @@ function drawGrain(t, s) {
 let SCENE_LIST = [], SCENE_FNS = {}, CAM_FNS = {}, TL = null, CUR_SCENE = null;
 const OFF = makeCanvas(W, H), OFF_CTX = OFF.getContext('2d');
 
+// ---------- backdrops: scene-level background atmosphere (registered in generative.js or by projects) ----------
+const BACKDROPS = {};
+// fn(t, info, opts): info = { seed, sceneIndex, opacity }; draw in world space (the engine applies parallax)
+function registerBackdrop(name, fn) { BACKDROPS[name] = fn; }
+function drawBackdrop(name, t, opts = {}) {
+  if (name === 'none') return;
+  if (!BACKDROPS[name]) throw new Error(`unknown backdrop "${name}"; available: ${Object.keys(BACKDROPS).join(', ')}, none`);
+  BACKDROPS[name](t, { seed: 1, sceneIndex: 0, opacity: 1, ...opts }, opts);
+}
+// stable per-scene seed so every scene gets its own light/cloud layout
+const seedOf = (str) => { let h = 2166136261; for (const ch of str) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return (h >>> 0) % 100000; };
+
+// camera applied at depth k: k = 1 moves with the scene content, smaller k moves less (farther away)
+function applyCam(cam, k, overscan = 1) {
+  const z = (1 + (cam.z - 1) * k) * overscan;
+  ctx.translate(W / 2, H / 2); ctx.scale(z, z); ctx.translate(-W / 2 - (cam.x - W / 2) * k, -H / 2 - (cam.y - H / 2) * k);
+}
+const PARALLAX = { base: 0.12, ambient: 0.35, backdrop: 0.6 };
+
 function drawScene(S, lt, t) {
   const s = useStyle(S.style);
   CUR_SCENE = S;
-  ctx.drawImage(bgOf(s), 0, 0);
-  ctx.save();
   // scene camera: focus point + zoom; default is a slow push-in
   const cam = CAM_FNS[S.id] ? CAM_FNS[S.id](lt, S) : { x: W / 2, y: H / 2, z: 1 + 0.035 * easeInOut(clamp(lt / S.dur)) };
-  ctx.translate(W / 2, H / 2); ctx.scale(cam.z, cam.z); ctx.translate(-cam.x, -cam.y);
+  const info = { seed: S.seed, sceneIndex: S.index, t, lt };
+  // far to near: static base, style ambient motion, scene backdrop, then the scene itself
+  ctx.save(); applyCam(cam, PARALLAX.base, 1.06); ctx.drawImage(bgOf(s), 0, 0); ctx.restore();
+  if (s.ambient) { ctx.save(); applyCam(cam, PARALLAX.ambient, 1.04); s.ambient(ctx, t, C, info); ctx.restore(); }
+  if (S.backdrop !== 'none') { ctx.save(); applyCam(cam, PARALLAX.backdrop, 1.02); BACKDROPS[S.backdrop](t, { ...info, opacity: S.backdropOpacity }, {}); ctx.restore(); }
+  ctx.save();
+  applyCam(cam, 1);
   SCENE_FNS[S.id](lt, S, t);
   ctx.restore();
 }
@@ -607,7 +646,7 @@ function render(t) {
   if (wp < 1 && tr !== 'cut') {
     const P = SCENE_LIST[i - 1];
     drawScene(P, P.dur - 0.001, P.end - 0.001);
-    TRANSITIONS[tr](() => drawScene(S, lt, t), wp);
+    TRANSITIONS[tr](() => drawScene(S, lt, t), wp, S);
   } else drawScene(S, lt, t);
   const s = useStyle(S.style);
   const fade = i === 0 ? prog(lt, 0, 0.4) : S.last ? 1 - prog(lt, S.dur - 1.0, S.dur) : 1;
@@ -643,6 +682,8 @@ function boot({ scenes, cams, sfx } = {}) {
     if (!scenes[s.id]) throw new Error(`scenes.js has no function for scene "${s.id}"`);
     const cast = resolveCast({ ...(TL.cast || {}), ...(s.cast || {}) }, castOverride, s.id);
     const transition = s.transition || STYLES[style].transition;
+    const backdrop = s.backdrop || TL.backdrop || 'none';
+    if (backdrop !== 'none' && !BACKDROPS[backdrop]) throw new Error(`scene "${s.id}" uses unknown backdrop "${backdrop}"; available: ${Object.keys(BACKDROPS).join(', ')}, none`);
     if (!TRANSITIONS[transition] && transition !== 'cut') throw new Error(`scene "${s.id}" uses unknown transition "${transition}"; available: ${Object.keys(TRANSITIONS).join(', ')}, cut`);
     const line = (k) => {
       if (!lines[k]) throw new Error(`scene "${s.id}" has no narration line ${k} (it has ${lines.length})`);
@@ -658,7 +699,10 @@ function boot({ scenes, cams, sfx } = {}) {
       return l.start - s.start + (edge === 'e' ? ct[idx + wc.length - 1][1] : ct[idx][0]);
     };
     return {
-      ...s, style, lines, cast, transition, tdur: s.transitionDuration ?? 0.6, dur: s.end - s.start, last: i === TL.scenes.length - 1,
+      ...s, style, lines, cast, transition, tdur: s.transitionDuration ?? 0.6, index: i, seed: seedOf(s.id),
+      backdrop, backdropOpacity: s.backdropOpacity ?? TL.backdropOpacity ?? 1,
+      // portal transition: the point (screen coords of the previous scene) the camera dives into
+      transitionFocus: s.transitionFocus || [W / 2, H / 2], dur: s.end - s.start, last: i === TL.scenes.length - 1,
       word: (k, str, nth = 0) => wordAt(k, str, nth, 's'),
       wordEnd: (k, str, nth = 0) => wordAt(k, str, nth, 'e'),
       words: (k) => (line(k).words || []).map((w) => ({ text: w.text, s: w.s + line(k).start - s.start, e: w.e + line(k).start - s.start })),
