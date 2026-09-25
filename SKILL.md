@@ -1,6 +1,6 @@
 ---
 name: canvas-video
-description: 用纯代码（JS + Canvas2D）做讲解、科普类动画视频。一个 render(t) 函数画出每一帧；edge-tts 配音，带逐词时间戳，自动生成时间轴；自动加代码合成的背景音乐和音效；多个 Chrome 并行，用 WebCodecs 硬件编码导出 mp4。支持横屏 16:9、竖屏 9:16、方屏 1:1。内置 10 种可切换风格（paper 纸张手绘、blueprint 蓝图发光、chalk 黑板粉笔、neon 霓虹赛博、minimal 极简信息图、pixel 像素、ink 水墨、papercut 剪纸、isometric 等轴测、inked 插画描边）；插画函数库（圆环隧道、旋臂星系、DNA 双螺旋、神经元、黑洞吸积盘、闪电、棱镜光谱、行星、向日葵）；动效库（弹簧、粒子聚字、形状变形、乱码解码、震屏、彩带）；生成式效果（粒子神经网络、噪声流场、烟雾、火花、雪、数据喷发、鸟群、递归生长树、3D 点云、梯度下降小球）；组件库（图表、代码块、终端、AI 对话界面、流程图、时间轴、对比表、图标）；可替换角色（机器人、人物、小猫，或自己用代码画的）。以下情况都应使用本 skill：用户想用代码或 Canvas 画动画视频；提到“JS 绘制每一帧”“逐帧渲染”“render(t)”“程序化动画”；想做科普、讲解、知识类短视频（包括抖音、小红书竖屏）并接受扁平或手绘画风；想给现有视频换风格、换角色；或者正在修改含有 script.json + scenes.js 的 canvas-video 项目。即使用户没提 Canvas，只要想要“像 X 上那种用 JS 画出来的讲解动画”，也用本 skill。如果用户点名要用 Canvas2D 或 canvas-video，本 skill 优先于 HyperFrames 这类基于 DOM 的视频框架。
+description: 用纯代码（JS + Canvas2D）做讲解、科普类动画视频。一个 render(t) 函数画出每一帧；edge-tts 配音，带逐词时间戳，自动生成时间轴；自动加代码合成的背景音乐和音效；多个 Chrome 并行，用 WebCodecs 硬件编码导出 mp4。支持横屏 16:9、竖屏 9:16、方屏 1:1。内置 10 种可切换风格（paper 纸张手绘、blueprint 蓝图发光、chalk 黑板粉笔、neon 霓虹赛博、minimal 极简信息图、pixel 像素、ink 水墨、papercut 剪纸、isometric 等轴测、inked 插画描边）；插画画法（粗描边、平涂、排线，能画任何主体）；动效库（弹簧、粒子聚字、形状变形、乱码解码、震屏、彩带）；生成式效果（粒子神经网络、噪声流场、烟雾、火花、雪、数据喷发、鸟群、递归生长树、3D 点云、梯度下降小球）；组件库（图表、代码块、终端、AI 对话界面、流程图、时间轴、对比表、图标）；可替换角色（机器人、人物、小猫，或自己用代码画的）。以下情况都应使用本 skill：用户想用代码或 Canvas 画动画视频；提到“JS 绘制每一帧”“逐帧渲染”“render(t)”“程序化动画”；想做科普、讲解、知识类短视频（包括抖音、小红书竖屏）并接受扁平或手绘画风；想给现有视频换风格、换角色；或者正在修改含有 script.json + scenes.js 的 canvas-video 项目。即使用户没提 Canvas，只要想要“像 X 上那种用 JS 画出来的讲解动画”，也用本 skill。如果用户点名要用 Canvas2D 或 canvas-video，本 skill 优先于 HyperFrames 这类基于 DOM 的视频框架。
 ---
 
 # canvas-video：用代码画出每一帧
@@ -25,7 +25,7 @@ description: 用纯代码（JS + Canvas2D）做讲解、科普类动画视频。
 ```bash
 # 1. 新建项目：复制引擎；安装 puppeteer-core、霞鹜文楷网页字体和 edge-tts（需要联网）
 node <skill>/scripts/init.mjs my-video               # 竖屏加 --format 9:16
-#    从示例改起：--example components（组件和动效大全）| llm-reasoning（63 秒完整作品）| iso-city（等轴测）
+#    从示例改起：--example components（组件和动效大全）| llm-reasoning（63 秒完整作品）| iso-city（等轴测）| token-journey（插画短片）
 #    skill 升级后，更新已有项目：node <skill>/scripts/init.mjs my-video --update-engine
 cd my-video
 
@@ -75,7 +75,7 @@ node scripts/export.mjs --draft             # 15fps 草稿，最快
 | `format` | `16:9` 横屏 1920×1080（默认）、`9:16` 竖屏 1080×1920、`1:1` 方屏 1080×1080 |
 | `lead` / `hold` | 场景开始到第一句之间的留白 / 最后一句说完后画面停留的秒数（给收尾动画留时间） |
 | `style` / `transition` | 场景级设置会覆盖全局；转场还可以用 `transitionDuration` 调时长（默认 0.6 秒） |
-| `backdrop` | 场景氛围：`network`、`flow`、`particles`、`spotlight`、`gradient`、`rings`，天空类 `space`、`sunset`、`dusk`、`dawn`，或 `none`。全局写一个，场景可以单独覆盖，配合 `backdropOpacity`。见 `references/generative.md` |
+| `backdrop` | 场景氛围：`network`、`flow`、`particles`、`spotlight`、`gradient`、`rings`，天空类 `space`、`sunset`、`dusk`、`dawn`，或 `none`（默认）；也可以用 `registerBackdrop` 自己写。全局写一个，场景可以单独覆盖，配合 `backdropOpacity`。见 `references/generative.md` |
 | `transitionFocus` | 转场用 `portal` 时，镜头钻进上一幕的哪个点 `[x, y]` |
 | `cast` | 把角色分配给形象，场景也可以写自己的 `cast` |
 | `subtitles.highlight` | 字幕逐字高亮：念过的字变深，没念到的字是浅色 |
@@ -114,28 +114,22 @@ const SFX = { intro: (S) => [{ at: S.word(0, '智能体'), sound: 'pop' }] };   
 
 完整 API：`references/primitives.md`（基础）、`references/motion.md`（动效）、`references/generative.md`（生成式效果）、`references/illustrate.md`（插画主体）、`references/components.md`（组件）、`references/audio.md`（声音）。
 
-## 让动画有新意（重要）
+## 创作交给你
 
-每个场景都“淡入 + 打字”会很单调。写每个场景之前，先想清楚这一幕的**主视觉动作**，也就是观众记住的那一下，再从下面挑手法，每个场景至少用一种：
+这个 skill 只负责技术：引擎、风格、动效、组件、插画画法，以及配音、对齐、导出。视频讲什么、画什么、用什么节奏和结构，都由你按主题自己决定，下面列的只是工具，不是套路。示例和用户给的参考视频，用来看技法和代码怎么写，画面内容还是自己想。
 
-- **变形**：概念 A 变成 B（`morphPath` + `shapes`）。比如一个圆变成大脑，一个问号变成对勾。
-- **聚合与炸散**：粒子聚成关键词，讲完再炸开（`particleText`，p 从 0 到 1 是聚合，从 1 到 2 是炸散）。
-- **弹簧和错开**：一组元素依次弹进来，节奏感比同时出现强（`spring`、`stagger`、`iconBadge`）。
-- **文字特效**：`textReveal` 的 `bounce` 弹跳、`drop` 下落、`scramble` 乱码解码（适合 AI 主题）、`wave` 波浪、`split` 上下分开。
-- **镜头语言**：先特写再拉远揭示全貌；关键时刻 `punchIn` 快速推近；出错时 `shake` 震屏。
-- **沿路径运动**：数据包、光点、角色沿路线走（`followPath`、`flowChart` 的 `flow: true`）。
-- **强调**：`burst` 放射线、`ripple` 涟漪、`circleMark` 手绘圈、`highlighter` 荧光笔、`glowPulse` 呼吸光、`confetti` 彩带。
-- **模拟真实界面**：`chatBubbles`（AI 先显示“正在输入”的三个点，再逐字回答）、`terminal`、`codeBlock`、`browserWindow`。讲 AI 或编程时特别有说服力。
-- **转场也是叙事**：`zoom` 推进到下一层细节、`glitch` 进入机器内部、`iris` 聚焦到一点、`split` 劈开揭示、`shutter` 百叶窗切换、`portal` 钻进上一幕的某个物体（一只眼睛、一块屏幕）再从里面展开下一幕，都可以在场景里单独指定。
-- **生成式背景和模拟**：粒子神经网络 `networkField`（讲 AI、模型内部）、噪声流场 `flowField`（数据流动）、`emitter` 喷出数据、火花、烟、雪、`makeFlock` 鸟群（很多 Agent 协作）、`branchTree` 递归树（多条思路里选中一条）、3D 点云 `drawPointCloud`（词向量空间）、`rollDown`（梯度下降）。背景类效果要调低透明度，不要抢主体。
-- **插画镜头**（效果最强）：一句台词一镜，每镜一个占画面 40% 以上的大插画主体（`ringTunnel` 隧道、`galaxyDisk` 星系、`helix3D` 双螺旋、`dendrites` 神经元、`accretionDisk` 黑洞、`lightning` 闪电、`prismSpectrum` 棱镜、`planet` 行星、`phyllotaxis` 向日葵，或用 `inkShape` 自己画），画面上几乎不放文字，同一个主角贯穿全片，用 `portal` 钻进主角来换镜。见 `references/illustrate.md` 和 `examples/token-journey`。
-- **背景氛围**：每一幕换一个 `backdrop`，让背景跟着内容变：讲模型内部用 `network`，数据流动用 `flow`，开场聚焦用 `spotlight`，收尾用 `rings`；讲“旅程”“从无到有”可以用天空 `space` → `dusk` → `dawn` 串起时间感。风格自带的环境层（光斑、雾、云、浮尘）会一直缓慢流动，镜头推近时背景各层有视差。
-- **手绘质感**：`pencilFill` 彩铅排线填充、`speedLines` 冲刺速度线，适合做有手作感的关键画面。
-- **声音配合动作**：弹出配 `pop`，答对配 `success`，出错配 `error`，大字登场前配 `swell`。
+工具箱（按需取用，也可以都不用，找不到合适的就用基础绘图函数自己画）：
 
-声音和画面都要卡在台词的具体词上（用 `S.word`），这是“精致感”最主要的来源。
+- 动效（`references/motion.md`）：变形 `morphPath`、粒子聚字 `particleText`、弹簧和错开 `spring` / `stagger`、文字特效 `textReveal`、沿路径运动 `followPath`、强调 `burst` / `ripple` / `circleMark` / `highlighter`、镜头 `punchIn` / `shake`、速度线 `speedLines`。
+- 转场：`wipe`、`erase`、`blot`、`slide`、`dissolve`、`fade`、`iris`、`zoom`、`glitch`、`split`、`shutter`、`portal`（钻进上一幕的某个点）、`cut`。
+- 组件（`references/components.md`）：图表、代码块、终端、AI 对话界面、流程图、时间轴、对比表、图标。
+- 生成式效果（`references/generative.md`）：粒子网络、噪声流场、粒子发射器、鸟群、递归树、3D 点云、物理轨迹，以及场景氛围 `backdrop`。
+- 插画画法（`references/illustrate.md`）：`inkShape` 描边、平涂、排线、暗部阴影，可以画任何主体；库里另附几个示范主体。
+- 声音：音效列表见下文 `SFX`，音乐和混音见 `references/audio.md`。
 
-**构图**：主体要把 `SAFE` 撑满、居中平衡，不要都挤在左上角，下半屏也不要空着。组件的尺寸按安全区来算（比如窗口宽度取 SAFE 宽度的 60% 到 80%），字号不要小于 26px（竖屏不小于 32px）。一个画面只讲一件事，信息多就拆成两个场景，或者让元素分批出现、分批退场。
+技术上的一个提示：动作和音效可以用 `S.word` 卡在台词的具体词上，换声音或改语速后依然对齐。
+
+**看图自查时留意**：文字要看得清（横屏 26px 以下、竖屏 32px 以下通常就太小了）；主要内容放在 `SAFE` 里，不被标题、字幕、镜头裁掉；画面上同时要看的东西不要太多，信息多时可以分批出现或者拆成两幕。
 
 ## 角色
 
@@ -156,9 +150,7 @@ const SFX = { intro: (S) => [{ at: S.word(0, '智能体'), sound: 'pop' }] };   
 | `isometric` | 柔和配色、30° 斜网格，配合 `iso.js` 画立体 | fade |
 | `inked` | 深紫夜色底、粗描边插画、排线纹理、星尘，配合 `illustrate.js` | portal |
 
-所有转场：`wipe`、`erase`、`blot`、`slide`、`dissolve`、`fade`、`iris`、`zoom`、`glitch`、`split`、`shutter`、`cut`。
-
-同一部片子里最多用两种风格交替，并且让风格对应内容：比如“外部世界”用 paper，“机器内部”用 blueprint。等轴测需要在场景里用 `isoBox` 等函数专门画，参考 `examples/iso-city`。
+风格可以整片统一，也可以随内容切换（比如“外部世界”用 paper，“机器内部”用 blueprint），自己把握；切换太频繁容易显得乱。等轴测需要在场景里用 `isoBox` 等函数专门画，参考 `examples/iso-city`。
 
 ## 必读的坑
 
@@ -174,7 +166,9 @@ const SFX = { intro: (S) => [{ at: S.word(0, '智能体'), sound: 'pop' }] };   
 
 ## 示例
 
-- `examples/components/`：组件和动效大全，一个场景演示一类，每一幕的转场都不同。写新场景前先看这里。
+示例用来看代码怎么写、技法怎么实现；它们的具体画面是那一个视频的选择，新视频的画面要自己想。
+
+- `examples/components/`：组件和动效大全，一个场景演示一类，每一幕的转场都不同。
 - `examples/llm-reasoning/`：63 秒的完整作品，讲“大模型是怎么推理出答案的”，paper 和 blueprint 交替使用。
 - `examples/iso-city/`：15 秒的等轴测短片。
-- `examples/token-journey/`：50 秒、14 镜的插画短片《一个 token 的旅程》，inked 风格，每镜一个插画主体。想要“酷”的视觉效果先看这个。
+- `examples/token-journey/`：50 秒、14 镜的插画短片，inked 风格。可以看插画画法、一句一镜的快节奏、用 `portal` 钻进主角来衔接镜头这些技法怎么写。

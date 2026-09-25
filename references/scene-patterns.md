@@ -1,6 +1,6 @@
 # 场景写法
 
-下面这些都来自 `examples/llm-reasoning/scenes.js`，可以直接去那里看完整代码。
+下面这些都来自 `examples/llm-reasoning/scenes.js`，可以直接去那里看完整代码。它们是技法参考，演示某种效果在代码里怎么实现，不是固定套路。
 
 ## 1. 让动作对齐台词
 ```js
