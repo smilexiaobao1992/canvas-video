@@ -5,7 +5,7 @@
 //   --update-golden  accept the current rendering as the new reference images (after an intended visual change)
 //   --quick          one style and one character per example (faster smoke test)
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readdirSync, symlinkSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readdirSync, symlinkSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -32,13 +32,15 @@ const probeDur = (f, cwd) => parseFloat(run('ffprobe', ['-v', 'error', '-show_en
 const timelineDur = (dir) => { const tl = readFileSync(join(dir, 'timeline.js'), 'utf8'); return JSON.parse(tl.slice(tl.indexOf('{'), tl.lastIndexOf('}') + 1)).duration; };
 
 console.log(`selftest in ${tmp}: ${CASES.length} cases, ${STYLES.length} styles, ${CHARACTERS.length} characters${UPDATE ? ' (updating golden images)' : ''}\n`);
-step('install npm deps', () => run('npm', ['install', '--silent', '--prefix', join(tmp, 'shared'), 'puppeteer-core', 'lxgw-wenkai-webfont'], tmp));
+// dependencies are installed once into tests/.deps (gitignored) and reused by every run
+const DEPS = join(SKILL, 'tests/.deps');
+step('npm deps', () => { if (existsSync(join(DEPS, 'node_modules/puppeteer-core')) && existsSync(join(DEPS, 'node_modules/lxgw-wenkai-webfont'))) return 'cached'; run('npm', ['install', '--silent', '--prefix', DEPS, 'puppeteer-core', 'lxgw-wenkai-webfont'], tmp); });
 
 for (const c of CASES) {
   const dir = join(tmp, c.id);
   step(`${c.id}: init`, () => {
     run('node', [join(SKILL, 'scripts/init.mjs'), dir, ...(c.example ? ['--example', c.example] : []), '--no-install'], tmp);
-    symlinkSync(join(tmp, 'shared', 'node_modules'), join(dir, 'node_modules'));
+    symlinkSync(join(DEPS, 'node_modules'), join(dir, 'node_modules'));
     if (c.format) {
       const s = JSON.parse(readFileSync(join(dir, 'script.json'), 'utf8'));
       writeFileSync(join(dir, 'script.json'), JSON.stringify({ ...s, format: c.format }, null, 2));

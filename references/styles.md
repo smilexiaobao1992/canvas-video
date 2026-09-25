@@ -22,7 +22,7 @@ registerStyle('my-style', {
   hardShadow: { alpha: 0.35, blur: 0 },       // shadow 为 'hard' 时的不透明度和模糊（剪纸 3，像素 0）
   pixelate: 0,                         // 大于 1 时整帧按 1/N 分辨率渲染后放大（像素风格用 3）；字幕和角标不受影响
   texture: { grain: 16, vignette: 'rgba(90, 60, 30, 0.13)' },  // grain 取 0-40；vignette 设为 null 表示不要暗角
-  transition: 'wipe',                  // 'wipe' 斜线划过 | 'erase' 黑板擦 | 'blot' 墨迹晕开 | 'slide' 纸片滑入 | 'dissolve' 方块替换 | 'fade' | 'cut'
+  transition: 'wipe',                  // 默认转场，可选：wipe、erase、blot、slide、dissolve、fade、iris、zoom、glitch、split、shutter、cut（后五个见 motion.md）
   subtitle: { size: 36, color: null, plate: false },           // plate：字幕加半透明底板
   background(b, w, h, P, rand) {},     // 只画一次，缓存在离屏画布里；b 是离屏画布的 2D 上下文，P 是调色板
   overlay(c, t, P) {},                 // 可选，每帧叠加在场景上面（在颗粒、暗角之前），比如扫描线、闪烁

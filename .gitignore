@@ -2,3 +2,4 @@
 node_modules/
 snaps/
 *.mp4
+tests/.deps/

@@ -21,12 +21,14 @@ const outDir = opt('out') || 'snaps';
 const golden = opt('golden');
 const updateGolden = flag('update-golden');
 const check = !flag('no-check');
-const times = argv.map(Number).filter((x) => !Number.isNaN(x));
+const bad = argv.filter((a) => a.startsWith('--') || Number.isNaN(Number(a)));
+if (bad.length) { console.error(`unknown arguments: ${bad.join(' ')} (times must be separate numbers, e.g. snap.mjs 3.5 12)`); process.exit(1); }
+const times = argv.map(Number);
 const GOLDEN_TOLERANCE = 1.5; // mean absolute difference per channel (0-255) on 320px-wide thumbnails
 
 mkdirSync(outDir, { recursive: true });
 const browser = await launchBrowser();
-const { page, errors } = await openPage(browser, { style, cast });
+const { page, errors } = await openPage(browser, { style, cast, snap: true });
 
 let impure = [], mismatches = [];
 if (!errors.length) {

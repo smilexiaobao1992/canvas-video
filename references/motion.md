@@ -22,7 +22,7 @@
 ## 文字
 | 函数 | 说明 |
 |---|---|
-| `textReveal(str, x, y, lt, { mode, size, color, weight, align, dur=0.9, role='title' })` | 逐字入场。**lt 是距离开始的秒数**（常写 `lt - S.word(0, '某词')`），返回整段宽度。mode：`bounce` 弹跳、`drop` 下落、`scramble` 乱码解码、`wave` 波浪、`split` 上下分开、`blur` 模糊变清、`typewriter` 打字机 |
+| `textReveal(str, x, y, lt, { mode, size, color, weight, align, dur=0.9, role='title' })` | 逐字入场。**lt 是距离开始的秒数**（常写 `lt - S.word(0, '某词')`），返回整段宽度。大多数模式在 dur 秒内全部到位，`scramble` 最后一个字要到约 1.25×dur 才定下来。mode：`bounce` 弹跳、`drop` 下落、`scramble` 乱码解码、`wave` 波浪、`split` 上下分开、`blur` 模糊变清、`typewriter` 打字机 |
 | `particleText(str, x, y, p, { size, step=5, dot, color, accent, spread, seed })` | 粒子聚成文字。p 从 0 到 1：从四周飞来聚合；1 到 2：再炸散出去。step 越小粒子越密，也越慢 |
 | `highlighter(x, y, w, h, p, color)` | 荧光笔从左往右涂 |
 | `circleMark(x, y, rx, ry, p, { color, width })` | 手绘圈，绕一圈多一点 |

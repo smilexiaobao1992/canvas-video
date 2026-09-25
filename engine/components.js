@@ -146,7 +146,7 @@ function chatBubbles(x, y, w, messages, lt, o = {}) {
     const think = m.role === 'ai' ? m.think ?? 0.8 : 0;
     const typingNow = lt < m.at + think;
     const shownText = typingNow ? '' : m.role === 'ai' ? typed(m.text, (lt - m.at - think) * streamRate / [...m.text].length) : m.text;
-    const lines = typingNow ? [''] : wrapText(m.text, size, maxW - 44);
+    const lines = typingNow ? [''] : wrapText(m.role === 'ai' ? shownText || ' ' : m.text, size, maxW - 44);
     const bw = typingNow ? 110 : Math.max(...lines.map((l) => measure(l, size))) + 44, bh = lines.length * size * 1.4 + 26;
     const bx = mine ? x + w - bw - (avatars ? 70 : 0) : x + (avatars ? 70 : 0);
     const s = spring(lt - m.at, { stiffness: 260, damping: 18 });
@@ -227,25 +227,19 @@ function donutChart(cx, cy, r, data, p, o = {}) {
   });
   if (center) text(center, cx, cy, { size: size * 1.4, weight: 700 });
 }
-// rolling-digit counter (odometer); p: 0..1
+// counter that eases from `from` to `to` (thousands separators) and pops when it lands; p: 0..1
 function counter(x, y, from, to, p, o = {}) {
   const { size = 96, color = C.ink, prefix = '', suffix = '', decimals = 0, align = 'center' } = o;
   const v = lerp(from, to, easeOut(clamp(p)));
   const str = `${prefix}${v.toFixed(decimals).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}${suffix}`;
-  const w = measure(str, size, 700, 'title');
-  let cx = align === 'center' ? x - w / 2 : align === 'right' ? x - w : x;
-  ctx.save(); ctx.beginPath(); ctx.rect(cx - 10, y - size * 0.7, w + 20, size * 1.4); ctx.clip();
-  // the last digit rolls vertically between values
-  const f = frac(v * Math.pow(10, decimals)), chars = [...str];
-  chars.forEach((ch, i) => {
-    const cw = measure(ch, size, 700, 'title');
-    const isLast = i === chars.length - 1 - [...suffix].length && /\d/.test(ch) && p < 1;
-    if (isLast) {
-      text(ch, cx + cw / 2, y - f * size, { size, color, weight: 700, role: 'title' });
-      text(String((Number(ch) + 1) % 10), cx + cw / 2, y + (1 - f) * size, { size, color, weight: 700, role: 'title' });
-    } else text(ch, cx + cw / 2, y, { size, color, weight: 700, role: 'title' });
-    cx += cw;
-  });
+  const pop = 1 + 0.1 * pingPong(prog(p, 0.9, 1));
+  ctx.save(); ctx.translate(x, y); ctx.scale(pop, pop);
+  // tabular layout: every digit gets the width of "0" so the number does not jitter while counting
+  const dw = measure('0', size, 700, 'title');
+  const chars = [...str], widths = chars.map((c) => (/\d/.test(c) ? dw : measure(c, size, 700, 'title')));
+  const w = widths.reduce((a, b) => a + b, 0);
+  let cx = align === 'center' ? -w / 2 : align === 'right' ? -w : 0;
+  chars.forEach((ch, i) => { text(ch, cx + widths[i] / 2, 0, { size, color, weight: 700, role: 'title' }); cx += widths[i]; });
   ctx.restore();
 }
 
@@ -280,7 +274,7 @@ function flowChart(nodes, edges, lt, o = {}) {
     ctx.save(); ctx.translate(n.x, n.y); ctx.scale(s, s);
     shadowRect(-w / 2 + 7, -nodeH / 2 + 8, w, nodeH, 18);
     rr(-w / 2, -nodeH / 2, w, nodeH, 18); ctx.fillStyle = n.color || C.surface; ctx.fill(); ctx.strokeStyle = C.ink; ctx.lineWidth = 3.5; strokeInk();
-    if (n.icon) { iconGlyph(n.icon, -w / 2 + 48, 0, 46); text(n.label, -w / 2 + 88, 2, { size, align: 'left', color: n.textColor || C.ink }); }
+    if (n.icon) { iconGlyph(n.icon, -w / 2 + 48, 0, 46, { color: n.iconColor || n.textColor || C.ink }); text(n.label, -w / 2 + 88, 2, { size, align: 'left', color: n.textColor || C.ink }); }
     else text(n.label, 0, 2, { size, color: n.textColor || C.ink });
     ctx.restore();
   }

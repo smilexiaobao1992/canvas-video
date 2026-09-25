@@ -25,7 +25,11 @@
 - 场景坐标要用 `W`、`H`、`SAFE` 来算，写死 1920、1080 就只能在横屏下使用（`llm-reasoning` 和 `iso-city` 两个示例就是只适配横屏的写法）。
 - 竖屏的空间主要在纵向：一行放 2 到 3 个元素，主体上下排列；字幕在 84% 高度附近，角色和地面线放在 `SAFE.y1` 附近。
 
+## 镜头
+- 推近时，画面四周的内容会被推到屏幕边缘，可能压到左上角的标题和右上角的章节标签。推近幅度一般不超过 1.15，推近时主体要放在画面中间。
+
 ## 回归测试
+- 截图时页面会带上 `?snap=1`，主画布改用 CPU 渲染（`willReadFrequently`），这样同一帧反复渲染的结果完全一致。以前用 GPU 渲染时，截图帧数一多，会偶尔出现 1 个像素值的差异，被误报成“不是纯函数”。
 - 缩略图画布必须用 `willReadFrequently: true`：Chrome 的 canvas 在第一次 `getImageData` 之后会从 GPU 切换到 CPU，两条路径缩放出来的像素略有不同，会让基准图对比出现误报。
 - 画面变化是有意的，就运行 `selftest.mjs --update-golden`，并在提交说明里写清楚。
 
@@ -43,5 +47,6 @@
 - 新旧版成片的 PSNR 大约 38 dB，差别集中在颗粒噪点上，肉眼看不出。想要更高画质用 `--bitrate 30`。
 - 画一帧的耗时（M4）：paper / chalk / pixel 约 1 ms，blueprint / neon 约 9 ms，ink 约 26 ms（每一笔都有模糊）。
 - `--draft` 是 15fps、4 Mbps，只用于预览，不要当成片交付。
-- 导出需要系统里装有 Chrome（`/Applications/Google Chrome.app`）；Chrome 装在别处时，用环境变量 `CHROME_PATH` 指定。
+- 导出、截图、混音都要启动 Chrome：会自动查找各平台的常见位置，找不到时用 `CHROME_PATH` 指定。
+- **在 Codex 等带沙箱的 agent 里，Chrome 通常起不来**（`Failed to launch the browser process`）。snap、mix、export 需要在沙箱外运行（批准提权，或者用可以访问浏览器的沙箱模式）；init 和 tts 需要联网。
 - 导出前要先有 `voice.wav`；用 `--dry` 生成的是静音音轨。

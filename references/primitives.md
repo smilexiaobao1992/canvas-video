@@ -88,6 +88,7 @@
 | `S.speaking(lt)` | 本场景有旁白正在念时返回 true，传给 `talk` 就能让嘴动起来 |
 | `S.word(i, str, nth=0)` / `S.wordEnd(i, str, nth=0)` | 第 i 句里 str 开始 / 结束说的时刻（相对场景），用配音返回的逐词时间戳算出来；找不到会报错并打印整句文本 |
 | `S.words(i)` | 第 i 句的词列表 `[{ text, s, e }]` |
+| `S.dur` | 本场景总时长（秒） |
 | `S.transition` / `S.tdur` | 进入本场景用的转场和时长 |
 | `registerCharacter(name, def)` | 注册新形象，见 `characters.md` |
 

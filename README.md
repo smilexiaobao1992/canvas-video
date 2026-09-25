@@ -79,7 +79,7 @@ ln -s ~/projects/canvas-video ~/.claude/skills/canvas-video
 ```bash
 ln -s ~/projects/canvas-video ~/.codex/skills/canvas-video
 ```
-（Codex 上还没有实测过。）
+Codex 上已经实测跑通（做出了一个 20 秒的视频）。需要注意：Codex 的沙箱里启动不了 Chrome，截图、混音、导出这几步要批准它在沙箱外执行；初始化和配音需要联网。
 
 **不支持 skills 的 agent**
 

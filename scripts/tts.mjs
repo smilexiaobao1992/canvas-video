@@ -34,14 +34,15 @@ function synth(text, mp3, json) {
   }
 }
 
-// --dry: speaking time from text (~4.2 CJK chars/s, ~2.8 latin words/s, pauses at punctuation) and evenly spread word timings
+// --dry: speaking time from text (edge-tts Chinese voices ~4.9 chars/s at +0%, scaled by `rate`; pauses at punctuation)
+const SPEED = 1 + (parseFloat(rate) || 0) / 100;
 function estimate(text) {
   const units = text.match(/[A-Za-z0-9]+|[㐀-鿿]|[，。！？；：,.!?;:]/g) || [];
   const words = [];
   let t = 0;
   for (const u of units) {
-    if (/^[，。！？；：,.!?;:]$/.test(u)) { t += /[，,；;：:]/.test(u) ? 0.18 : 0.3; continue; }
-    const d = /[㐀-鿿]/.test(u) ? 1 / 4.2 : 1 / 2.8;
+    if (/^[，。！？；：,.!?;:]$/.test(u)) { t += (/[，,；;：:]/.test(u) ? 0.12 : 0.22) / SPEED; continue; }
+    const d = (/[㐀-鿿]/.test(u) ? 1 / 4.9 : 1 / 3.0) / SPEED;
     words.push({ text: u, s: +t.toFixed(3), e: +(t + d).toFixed(3) });
     t += d;
   }

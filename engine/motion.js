@@ -90,7 +90,8 @@ function textReveal(str, x, y, lt, o = {}) {
     ctx.save();
     ctx.globalAlpha *= alpha;
     let dy = 0, sc = 1, rot = 0, a = 1;
-    if (mode === 'bounce') { sc = spring(local, { stiffness: 260, damping: 12 }); dy = (1 - sc) * size * 0.4; }
+    // overshoot capped so neighbouring characters never collide
+    if (mode === 'bounce') { const s = spring(local, { stiffness: 260, damping: 15 }); sc = Math.min(s, 1.06); dy = (1 - s) * size * 0.5; }
     else if (mode === 'drop') { const e = easeOutBack(p); dy = -(1 - e) * size * 1.2; rot = (1 - e) * (r() - 0.5) * 0.8; a = p; }
     else if (mode === 'wave') { dy = Math.sin(lt * 5 - i * 0.6) * size * 0.12 * (1 - clamp((lt - dur) / 1.5)); a = p; }
     else if (mode === 'blur') { a = p; ctx.filter = `blur(${(1 - p) * 10}px)`; sc = 1 + (1 - p) * 0.3; }
@@ -234,12 +235,14 @@ Object.assign(TRANSITIONS, {
   },
   // fly through: the old scene zooms past the camera while the new one zooms in from behind
   zoom(drawNext, wp) {
-    const prev = grabPrev(), next = renderOff(drawNext);
-    ctx.save(); ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, H);
-    const s1 = 1 + easeIn(wp) * 1.5, s2 = 0.6 + 0.4 * easeOut(wp);
-    ctx.globalAlpha = 1 - easeIn(clamp(wp * 1.4)); ctx.translate(W / 2, H / 2); ctx.scale(s1, s1); ctx.drawImage(prev, -W / 2, -H / 2);
+    // the new scene always covers the frame (scale >= 1) so no border shows; the old one flies past on top
+    const prev = grabPrev(), next = renderOff(drawNext), e = easeInOut(wp);
+    ctx.save();
+    const s2 = 1 + 0.25 * (1 - e);
+    ctx.translate(W / 2, H / 2); ctx.scale(s2, s2); ctx.drawImage(next, -W / 2, -H / 2);
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.globalAlpha = easeOut(clamp(wp * 1.6 - 0.3)); ctx.translate(W / 2, H / 2); ctx.scale(s2, s2); ctx.drawImage(next, -W / 2, -H / 2);
+    const s1 = 1 + easeIn(wp) * 1.8;
+    ctx.globalAlpha = 1 - easeOut(clamp(wp * 1.3)); ctx.translate(W / 2, H / 2); ctx.scale(s1, s1); ctx.drawImage(prev, -W / 2, -H / 2);
     ctx.restore();
   },
   // digital glitch: slices jump sideways with color fringes, switching scenes in the middle

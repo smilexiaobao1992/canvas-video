@@ -24,7 +24,7 @@ description: 用纯代码（JS + Canvas2D）做讲解、科普类动画视频。
 
 ```bash
 # 1. 新建项目：复制引擎；安装 puppeteer-core、霞鹜文楷网页字体和 edge-tts（需要联网）
-node <skill>/scripts/init.mjs my-video
+node <skill>/scripts/init.mjs my-video               # 竖屏加 --format 9:16
 #    从示例改起：--example components（组件和动效大全）| llm-reasoning（63 秒完整作品）| iso-city（等轴测）
 #    skill 升级后，更新已有项目：node <skill>/scripts/init.mjs my-video --update-engine
 cd my-video
@@ -51,7 +51,7 @@ node scripts/export.mjs --draft             # 15fps 草稿，最快
 
 预览：浏览器打开 `index.html`，可以播放、拖动、切换风格；地址后加 `?t=12.5` 跳到指定时刻，`?style=neon` 换风格，`?cast=host:cat` 换角色。
 
-**每次改完 scenes.js 都要跑 snap.mjs，并亲自看 sheet.png。** 文字重叠、深色风格下看不清、元素被镜头裁掉、动作和台词对不上，这些只有看图才发现得了。
+**每次改完 scenes.js 都要跑 snap.mjs，并亲自看 sheet.png。** 总览图是缩小的；细节（文字挤在一起、箭头穿过文字）要打开同目录下的全尺寸 PNG（`snaps/00-<场景>@<时间>.png`）才看得清。 文字重叠、深色风格下看不清、元素被镜头裁掉、动作和台词对不上，这些只有看图才发现得了。
 
 ## script.json
 
@@ -102,8 +102,8 @@ const SFX = { intro: (S) => [{ at: S.word(0, '智能体'), sound: 'pop' }] };   
 
 - **画布**：`W × H` 由 `format` 决定。重要内容放在 `SAFE`（`{x0, y0, x1, y1}`）里面，它已经给标题、字幕和竖屏平台的界面留出了位置。画面位置都用 `W`、`H`、`SAFE` 来算，同一套场景就能适配不同比例。
 - **时间**：
-  - `S.L(i)`：第 i 句的 `{s, e}`（相对本场景）
-  - `S.word(i, '词')` / `S.wordEnd(i, '词')`：这个词在第 i 句里开始 / 结束说的时刻
+  - `S.L(i)`：本场景第 i 句（从 0 开始，按场景内编号）的 `{s, e}`，时间相对本场景开头
+  - `S.word(i, '词')` / `S.wordEnd(i, '词')`：这个词在第 i 句里开始 / 结束说的时刻。按字匹配，配音把词切成“智能 / 体动手”这样也能找到“动手”
   - `S.speaking(lt)`：旁白正在念时为 true
   - 动作要挂在这些时间上，不要写死秒数，否则换声音或改语速后会对不上。
 - **纯函数**：不能跨帧保存状态；模拟类内容用 `mulberry32(seed)` 预先算好，再按时间插值读取。snap 会自动检查这一点。
@@ -128,6 +128,8 @@ const SFX = { intro: (S) => [{ at: S.word(0, '智能体'), sound: 'pop' }] };   
 - **声音配合动作**：弹出配 `pop`，答对配 `success`，出错配 `error`，大字登场前配 `swell`。
 
 声音和画面都要卡在台词的具体词上（用 `S.word`），这是“精致感”最主要的来源。
+
+**构图**：主体要把 `SAFE` 撑满、居中平衡，不要都挤在左上角，下半屏也不要空着。组件的尺寸按安全区来算（比如窗口宽度取 SAFE 宽度的 60% 到 80%），字号不要小于 26px（竖屏不小于 32px）。一个画面只讲一件事，信息多就拆成两个场景，或者让元素分批出现、分批退场。
 
 ## 角色
 
@@ -155,7 +157,8 @@ const SFX = { intro: (S) => [{ at: S.word(0, '智能体'), sound: 'pop' }] };   
 
 动手前先扫一眼 `references/pitfalls.md`。最常见的几个：
 - 深色风格下，高亮底上的文字要用 `C.onMark`；图形和大字都放在 `SAFE` 里面。
-- 竖屏时字幕在画面下方大约 84% 的高度，`SAFE.y1` 约为 70% 的高度，角色和地面线放在 `SAFE.y1` 附近。
+- 竖屏时字幕在画面下方大约 84% 的高度，`SAFE.y1` 约为 70% 的高度，角色放在 `SAFE.y1` 附近。如果风格背景底部已经有地形（papercut 的纸山、ink 的远山、pixel 的山），就不要再画 `drawGround`，免得多出一条浮在空中的线。
+- `--dry` 估算的时长和真实配音大约有 ±10% 的误差，控制总时长要以真实配音为准。
 - 调画面时用 snap 和 `--draft`，不要反复整片导出。
 
 ## 改引擎之后

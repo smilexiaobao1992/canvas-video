@@ -40,11 +40,12 @@ export function readTimeline() {
   return JSON.parse(src.slice(src.indexOf('{'), src.lastIndexOf('}') + 1));
 }
 
-export function pageUrl({ style, cast } = {}) {
+export function pageUrl({ style, cast, snap } = {}) {
   const url = new URL(pathToFileURL(resolve('index.html')).href);
   url.searchParams.set('export', '1');
   if (style) url.searchParams.set('style', style);
   if (cast) url.searchParams.set('cast', cast.replaceAll('=', ':'));
+  if (snap) url.searchParams.set('snap', '1');
   return url.href;
 }
 

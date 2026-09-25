@@ -6,7 +6,8 @@
 const W = (window.TIMELINE && window.TIMELINE.width) || 1920, H = (window.TIMELINE && window.TIMELINE.height) || 1080;
 const CANVAS = document.getElementById('c');
 CANVAS.width = W; CANVAS.height = H;
-const MAIN = CANVAS.getContext('2d');
+// snapshots read pixels back constantly; a CPU-backed canvas keeps them bit-stable across runs
+const MAIN = CANVAS.getContext('2d', { willReadFrequently: new URLSearchParams(location.search).has('snap') });
 const ASPECT = W / H > 1.2 ? 'wide' : W / H < 0.8 ? 'tall' : 'square';
 // screen-space layout for pinned elements; SAFE is the area scenes should keep important content in
 const LAYOUT = {

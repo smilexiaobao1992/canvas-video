@@ -1,5 +1,5 @@
 // Scaffold a canvas-video project (self-contained: engine + scripts are copied in).
-// Usage: node ~/.claude/skills/canvas-video/scripts/init.mjs <dir> [--example <name>] [--no-install]
+// Usage: node ~/.claude/skills/canvas-video/scripts/init.mjs <dir> [--example <name>] [--format 9:16] [--no-install]
 //        node ~/.claude/skills/canvas-video/scripts/init.mjs <dir> --update-engine   refresh engine/ and scripts/ only
 import { cpSync, existsSync, mkdirSync, readdirSync, copyFileSync, readFileSync, writeFileSync } from 'node:fs';
 import { execSync } from 'node:child_process';
@@ -10,7 +10,7 @@ const SKILL = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const argv = process.argv.slice(2);
 const flag = (f) => argv.includes(`--${f}`);
 const opt = (f) => { const i = argv.indexOf(`--${f}`); return i >= 0 ? argv[i + 1] : null; };
-const dir = argv.find((a, i) => !a.startsWith('--') && !(i > 0 && argv[i - 1] === '--example'));
+const dir = argv.find((a, i) => !a.startsWith('--') && !(i > 0 && ['--example', '--format'].includes(argv[i - 1])));
 if (!dir) { console.error('usage: init.mjs <dir> [--example <name>] [--no-install] [--update-engine]'); process.exit(1); }
 const target = resolve(dir);
 
@@ -63,10 +63,16 @@ if (example) {
   for (const f of readdirSync(src)) copyFileSync(join(src, f), join(target, f));
 }
 
+const format = opt('format');
+if (format) {
+  const p = join(target, 'script.json'), s = JSON.parse(readFileSync(p, 'utf8'));
+  writeFileSync(p, JSON.stringify({ ...s, format }, null, 2) + '\n');
+}
+
 if (!flag('no-install')) {
   const run = (cmd) => { console.log(`$ ${cmd}`); execSync(cmd, { cwd: target, stdio: 'inherit' }); };
   run(`npm install --silent ${NPM_DEPS}`);
   run(`${PY} -m venv .venv`);
   run(`${PIP} install -q edge-tts`);
 }
-console.log(`\ncanvas-video project ready: ${target}\nnext: cd ${dir} && node scripts/tts.mjs && node scripts/snap.mjs`);
+console.log(`\ncanvas-video project ready: ${target}\nnext: cd ${dir} && node scripts/tts.mjs --dry && node scripts/snap.mjs   (real voice later: node scripts/tts.mjs)`);
