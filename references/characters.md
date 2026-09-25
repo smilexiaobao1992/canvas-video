@@ -24,6 +24,7 @@
 drawRole('host', x, y, scale, t, {
   mood: 'normal' | 'happy' | 'sad',   // 表情
   look: -1..1,                         // 眼睛朝向
+  lookAt: { x, y },                    // 看向画面上的某个点（会覆盖 look）
   walk: true,                          // 走路（身体颠簸、摆腿）
   wave: true, point: true,             // 挥手 / 右手向右指
   talk: S.speaking(lt),                // 说话：旁白念着的时候嘴一张一合

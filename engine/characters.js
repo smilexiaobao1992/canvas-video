@@ -23,11 +23,13 @@ function resolveCast(cast, override, sceneId) {
   return out;
 }
 
-// o: { mood: 'normal'|'happy'|'sad', look: -1..1, walk, wave, point, talk, alpha, seed, options }
+// o: { mood: 'normal'|'happy'|'sad', look: -1..1, lookAt: {x, y}, walk, wave, point, talk, alpha, seed, options }
 function drawCharacter(name, x, y, s, t, o = {}, entry = {}) {
   const def = CHARACTERS[name];
   if (!def) throw new Error(`unknown character "${name}"; available: ${Object.keys(CHARACTERS).join(', ')}`);
-  const { mood = 'normal', look = 0, walk = false, wave = false, point = false, talk = false, alpha = 1, seed = 0 } = o;
+  const { mood = 'normal', walk = false, wave = false, point = false, talk = false, alpha = 1, seed = 0 } = o;
+  // lookAt: {x, y} turns the eyes toward a point (overrides look)
+  const look = o.lookAt ? clamp((o.lookAt.x - x) / 300, -1, 1) : o.look ?? 0;
   const colors = { ...def.colors, ...(entry.colors || {}) };
   const options = { ...def.options, ...(entry.options || {}), ...(o.options || {}) };
   const bobY = walk ? -Math.abs(Math.sin(t * 10)) * 10 : Math.sin(t * 2.2 + seed) * 2;

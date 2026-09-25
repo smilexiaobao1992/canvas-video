@@ -99,6 +99,53 @@ const SCENES = {
     callout(740, 330, 820, 620, '这里开始能自己动手', prog(lt, S.word(0, '标注') - 0.2, S.word(0, '标注') + 1.2));
   },
 
+  gen1(lt, S, t) {
+    drawTag('生成式背景', 'networkField / flowField / emitter', prog(lt, 0.1, 1));
+    const reveal = prog(lt, 0, 1.2);
+    // left: neural-network style particle graph, nodes near the pointer light up
+    const cx = 520, cy = 600;
+    networkField(t, { rect: { x0: 120, y0: 260, x1: 920, y1: 940 }, n: 60, linkDist: 170, alpha: reveal, lit: (i, p) => 1 - clamp(Math.hypot(p.x - cx, p.y - cy) / 260) });
+    // right top: flow field
+    ctx.save(); ctx.beginPath(); ctx.rect(1040, 240, 760, 360); ctx.clip();
+    flowField(t, { rect: { x0: 1000, y0: 200, x1: 1840, y1: 640 }, n: 160, color: C.ok, alpha: 0.8 * reveal });
+    ctx.restore();
+    // right bottom: data burst on the word 喷出
+    emitter(t, { preset: 'dataBurst', x: 1420, y: 800, start: S.start + S.word(0, '喷出'), stop: S.start + S.word(0, '喷出') + 0.8, color: C.mark, seed: 3 });
+    iconBadge('chip', 1420, 800, 110, lt, S.word(0, '喷出') - 0.3);
+  },
+
+  gen2(lt, S, t) {
+    drawTag('群集与生长', 'makeFlock / branchTree', prog(lt, 0.1, 1));
+    const flock = makeFlock({ n: 40, seed: 5, rect: { x0: 100, y0: 240, x1: 900, y1: 900 }, duration: S.dur + 1, target: (tt) => ({ x: 500 + Math.cos(tt * 0.9) * 220, y: 570 + Math.sin(tt * 1.3) * 150 }) });
+    drawFlock(flock, lt, { color: C.ink, accent: C.bad, size: 13 });
+    branchTree(1400, 960, prog(lt, 0.3, S.word(0, '长出来') + 0.6), {
+      depth: 4, len: 190, spread: 0.5, seed: 7, highlight: [1, 0, 1],
+      focus: prog(lt, S.word(0, '点亮') - 0.2, S.word(0, '点亮') + 0.6), labels: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'],
+    });
+  },
+
+  gen3(lt, S, t) {
+    drawTag('三维与物理', 'project3 / drawPointCloud / rollDown', prog(lt, 0.1, 1));
+    const cam = { rx: -0.35, ry: lt * 0.35, dist: 900, fov: 1150, cx: 540, cy: 620 };
+    wireAxes(260, cam, { labels: ['x', 'y', 'z'] });
+    const r = mulberry32(9);
+    const words = [['国王', [120, -140, 60]], ['女王', [160, -60, -120]], ['男人', [-60, -120, 140]], ['女人', [-20, -40, -40]], ['猫', [-180, 120, 40]], ['狗', [-150, 150, -40]]];
+    const cloud = [...Array.from({ length: 50 }, () => ({ p: [(r() - 0.5) * 460, (r() - 0.5) * 460, (r() - 0.5) * 460], r: 4, color: C.muted })),
+      ...words.map(([label, p]) => ({ p, label, r: 9, color: C.note }))];
+    drawPointCloud(cloud, cam, { labelSize: 26 });
+    drawLine3([-60, -120, 140], [120, -140, 60], cam, { arrow: true, color: C.ok, width: 3.5, p: prog(lt, S.word(0, '词向量'), S.word(0, '词向量') + 0.8) });
+    drawLine3([-20, -40, -40], [160, -60, -120], cam, { arrow: true, color: C.ok, width: 3.5, p: prog(lt, S.word(0, '词向量') + 0.5, S.word(0, '词向量') + 1.3) });
+    // gradient descent: a ball rolls down a curve into the valley
+    // screen y grows downward, so a valley is largest y in the middle; the bump gives a local dip on the way down
+    const curve = (x) => 880 - 0.0014 * (x - 1480) ** 2 + 30 * Math.sin((x - 1080) / 55);
+    strokeSamples(samplePath((u) => ({ x: 1080 + u * 800, y: curve(1080 + u * 800) }), 1, 120), { color: C.ink, width: 4 });
+    const ball = rollDown(curve, Math.max(0, lt - S.word(0, '小球')), { x0: 1110, friction: 1.4 });
+    glowPulse(ball.x, ball.y - 18, 40, t, C.bad);
+    ctx.fillStyle = C.bad; ctx.beginPath(); ctx.arc(ball.x, ball.y - 18, 18, 0, Math.PI * 2); ctx.fill();
+    text('损失', 1080, 400, { size: 26, color: C.sub, align: 'left' });
+    if (lt > S.word(0, '梯度下降')) text('最低点', 1480, curve(1480) + 48, { size: 28, color: C.ok, alpha: prog(lt, S.word(0, '梯度下降'), S.word(0, '梯度下降') + 0.4) });
+  },
+
   icons(lt, S, t) {
     const l0 = S.L(0);
     drawTag('图标', 'iconBadge / ICONS', prog(lt, 0.1, 1));

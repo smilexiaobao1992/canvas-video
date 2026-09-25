@@ -6,18 +6,148 @@
   "style": "minimal",
   "brand": null,
   "hud": true,
-  "cast": { "host": "bot" },
-  "subtitles": { "highlight": true },
-  "audio": { "music": "bright", "musicVolume": 0.14, "sfx": true },
+  "cast": {
+    "host": "bot"
+  },
+  "subtitles": {
+    "highlight": true
+  },
+  "audio": {
+    "music": "bright",
+    "musicVolume": 0.14,
+    "sfx": true
+  },
   "scenes": [
-    { "id": "text", "title": "文字动效", "style": "paper", "lead": 0.4, "hold": 1.2, "lines": ["文字可以弹跳、下落、解码，还能由粒子聚合而成。"] },
-    { "id": "morph", "title": "形状变形", "style": "blueprint", "transition": "iris", "lead": 0.4, "hold": 1.2, "lines": ["圆可以变成星星，再变成一颗心。"] },
-    { "id": "charts", "title": "图表", "style": "minimal", "transition": "zoom", "lead": 0.4, "hold": 1.2, "lines": ["柱状图用弹簧长出来，折线图带着光点往前画。"] },
-    { "id": "numbers", "title": "数字", "style": "papercut", "transition": "slide", "lead": 0.4, "hold": 1.2, "lines": ["环形图、进度环、滚动的计数器。"] },
-    { "id": "code", "title": "代码与终端", "style": "neon", "transition": "glitch", "lead": 0.4, "hold": 1.4, "lines": ["代码一行行敲出来，终端跟着输出结果。"] },
-    { "id": "chat", "title": "对话界面", "style": "minimal", "transition": "split", "lead": 0.4, "hold": 1.4, "lines": ["模拟一段和 AI 助手的对话，它会先思考，再一个字一个字地回答。"] },
-    { "id": "flow", "title": "流程图", "style": "blueprint", "transition": "shutter", "lead": 0.4, "hold": 1.4, "lines": ["节点依次弹出，连线画完之后，数据沿着箭头流动。"] },
-    { "id": "table", "title": "时间轴与对比", "style": "chalk", "transition": "erase", "lead": 0.4, "hold": 1.4, "lines": ["时间轴、对比表格，还有带引线的标注。"] },
-    { "id": "icons", "title": "图标", "style": "ink", "transition": "blot", "lead": 0.4, "hold": 2.2, "lines": ["还有二十多个用代码画的图标，全部跟着风格变。"] }
+    {
+      "id": "text",
+      "title": "文字动效",
+      "style": "paper",
+      "lead": 0.4,
+      "hold": 1.2,
+      "lines": [
+        "文字可以弹跳、下落、解码，还能由粒子聚合而成。"
+      ]
+    },
+    {
+      "id": "morph",
+      "title": "形状变形",
+      "style": "blueprint",
+      "transition": "iris",
+      "lead": 0.4,
+      "hold": 1.2,
+      "lines": [
+        "圆可以变成星星，再变成一颗心。"
+      ]
+    },
+    {
+      "id": "charts",
+      "title": "图表",
+      "style": "minimal",
+      "transition": "zoom",
+      "lead": 0.4,
+      "hold": 1.2,
+      "lines": [
+        "柱状图用弹簧长出来，折线图带着光点往前画。"
+      ]
+    },
+    {
+      "id": "numbers",
+      "title": "数字",
+      "style": "papercut",
+      "transition": "slide",
+      "lead": 0.4,
+      "hold": 1.2,
+      "lines": [
+        "环形图、进度环、滚动的计数器。"
+      ]
+    },
+    {
+      "id": "code",
+      "title": "代码与终端",
+      "style": "neon",
+      "transition": "glitch",
+      "lead": 0.4,
+      "hold": 1.4,
+      "lines": [
+        "代码一行行敲出来，终端跟着输出结果。"
+      ]
+    },
+    {
+      "id": "chat",
+      "title": "对话界面",
+      "style": "minimal",
+      "transition": "split",
+      "lead": 0.4,
+      "hold": 1.4,
+      "lines": [
+        "模拟一段和 AI 助手的对话，它会先思考，再一个字一个字地回答。"
+      ]
+    },
+    {
+      "id": "flow",
+      "title": "流程图",
+      "style": "blueprint",
+      "transition": "shutter",
+      "lead": 0.4,
+      "hold": 1.4,
+      "lines": [
+        "节点依次弹出，连线画完之后，数据沿着箭头流动。"
+      ]
+    },
+    {
+      "id": "table",
+      "title": "时间轴与对比",
+      "style": "chalk",
+      "transition": "erase",
+      "lead": 0.4,
+      "hold": 1.4,
+      "lines": [
+        "时间轴、对比表格，还有带引线的标注。"
+      ]
+    },
+    {
+      "id": "gen1",
+      "title": "生成式背景",
+      "style": "blueprint",
+      "transition": "zoom",
+      "lead": 0.4,
+      "hold": 1.6,
+      "lines": [
+        "粒子连成神经网络，顺着噪声流动，还能像烟花一样喷出数据。"
+      ]
+    },
+    {
+      "id": "gen2",
+      "title": "群集与生长",
+      "style": "paper",
+      "transition": "iris",
+      "lead": 0.4,
+      "hold": 1.6,
+      "lines": [
+        "一群小箭头像鸟群一样飞，树一层层长出来，最后只点亮一条路。"
+      ]
+    },
+    {
+      "id": "gen3",
+      "title": "三维与物理",
+      "style": "minimal",
+      "transition": "fade",
+      "lead": 0.4,
+      "hold": 1.8,
+      "lines": [
+        "词向量在三维空间里旋转，小球沿着曲线滚进山谷，这就是梯度下降。"
+      ]
+    },
+    {
+      "id": "icons",
+      "title": "图标",
+      "style": "ink",
+      "transition": "blot",
+      "lead": 0.4,
+      "hold": 2.2,
+      "lines": [
+        "还有二十多个用代码画的图标，全部跟着风格变。"
+      ]
+    }
   ]
 }

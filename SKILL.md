@@ -1,6 +1,6 @@
 ---
 name: canvas-video
-description: 用纯代码（JS + Canvas2D）做讲解、科普类动画视频。一个 render(t) 函数画出每一帧；edge-tts 配音，带逐词时间戳，自动生成时间轴；自动加代码合成的背景音乐和音效；多个 Chrome 并行，用 WebCodecs 硬件编码导出 mp4。支持横屏 16:9、竖屏 9:16、方屏 1:1。内置 9 种可切换风格（paper 纸张手绘、blueprint 蓝图发光、chalk 黑板粉笔、neon 霓虹赛博、minimal 极简信息图、pixel 像素、ink 水墨、papercut 剪纸、isometric 等轴测）；动效库（弹簧、粒子聚字、形状变形、乱码解码、震屏、彩带）；组件库（图表、代码块、终端、AI 对话界面、流程图、时间轴、对比表、图标）；可替换角色（机器人、人物、小猫，或自己用代码画的）。以下情况都应使用本 skill：用户想用代码或 Canvas 画动画视频；提到“JS 绘制每一帧”“逐帧渲染”“render(t)”“程序化动画”；想做科普、讲解、知识类短视频（包括抖音、小红书竖屏）并接受扁平或手绘画风；想给现有视频换风格、换角色；或者正在修改含有 script.json + scenes.js 的 canvas-video 项目。即使用户没提 Canvas，只要想要“像 X 上那种用 JS 画出来的讲解动画”，也用本 skill。如果用户点名要用 Canvas2D 或 canvas-video，本 skill 优先于 HyperFrames 这类基于 DOM 的视频框架。
+description: 用纯代码（JS + Canvas2D）做讲解、科普类动画视频。一个 render(t) 函数画出每一帧；edge-tts 配音，带逐词时间戳，自动生成时间轴；自动加代码合成的背景音乐和音效；多个 Chrome 并行，用 WebCodecs 硬件编码导出 mp4。支持横屏 16:9、竖屏 9:16、方屏 1:1。内置 9 种可切换风格（paper 纸张手绘、blueprint 蓝图发光、chalk 黑板粉笔、neon 霓虹赛博、minimal 极简信息图、pixel 像素、ink 水墨、papercut 剪纸、isometric 等轴测）；动效库（弹簧、粒子聚字、形状变形、乱码解码、震屏、彩带）；生成式效果（粒子神经网络、噪声流场、烟雾、火花、雪、数据喷发、鸟群、递归生长树、3D 点云、梯度下降小球）；组件库（图表、代码块、终端、AI 对话界面、流程图、时间轴、对比表、图标）；可替换角色（机器人、人物、小猫，或自己用代码画的）。以下情况都应使用本 skill：用户想用代码或 Canvas 画动画视频；提到“JS 绘制每一帧”“逐帧渲染”“render(t)”“程序化动画”；想做科普、讲解、知识类短视频（包括抖音、小红书竖屏）并接受扁平或手绘画风；想给现有视频换风格、换角色；或者正在修改含有 script.json + scenes.js 的 canvas-video 项目。即使用户没提 Canvas，只要想要“像 X 上那种用 JS 画出来的讲解动画”，也用本 skill。如果用户点名要用 Canvas2D 或 canvas-video，本 skill 优先于 HyperFrames 这类基于 DOM 的视频框架。
 ---
 
 # canvas-video：用代码画出每一帧
@@ -11,7 +11,7 @@ description: 用纯代码（JS + Canvas2D）做讲解、科普类动画视频。
 
 | 层 | 文件 | 说明 |
 |---|---|---|
-| 引擎（固定） | `engine/core.js`、`motion.js`、`components.js`、`characters.js`、`iso.js`、`load.js`，以及 `scripts/*` | 绘图函数、动效、组件、场景调度、镜头、转场、字幕、配音、混音、导出。一般不要改 |
+| 引擎（固定） | `engine/core.js`、`motion.js`、`generative.js`、`components.js`、`characters.js`、`iso.js`、`load.js`，以及 `scripts/*` | 绘图函数、动效、组件、场景调度、镜头、转场、字幕、配音、混音、导出。一般不要改 |
 | 风格（可替换） | `engine/styles/*.js` | 调色板、字体、背景、线条、阴影、质感、默认转场。见 `references/styles.md` |
 | 形象（可替换） | `engine/characters/*.js` | 角色的长相和动作。见 `references/characters.md` |
 | 内容（每个视频都不同） | `script.json`、`scenes.js` | 口播稿，以及每个场景怎么画 |
@@ -110,7 +110,7 @@ const SFX = { intro: (S) => [{ at: S.word(0, '智能体'), sound: 'pop' }] };   
 - **镜头**：`CAMS[id]` 返回 `{x, y, z}`，用 `shake()` 震屏、`punchIn()` 快速推近。`drawTag`、`drawProgress` 和用 `pinned()` 包起来的内容不受镜头影响。
 - **音效**：`SFX[id](S)` 返回 `[{ at, sound, volume }]`。可用的声音有：`whoosh`、`pop`、`ding`、`success`、`error`、`click`、`type`、`swell`、`glitch`。
 
-完整 API：`references/primitives.md`（基础）、`references/motion.md`（动效）、`references/components.md`（组件）、`references/audio.md`（声音）。
+完整 API：`references/primitives.md`（基础）、`references/motion.md`（动效）、`references/generative.md`（生成式效果）、`references/components.md`（组件）、`references/audio.md`（声音）。
 
 ## 让动画有新意（重要）
 
@@ -125,6 +125,7 @@ const SFX = { intro: (S) => [{ at: S.word(0, '智能体'), sound: 'pop' }] };   
 - **强调**：`burst` 放射线、`ripple` 涟漪、`circleMark` 手绘圈、`highlighter` 荧光笔、`glowPulse` 呼吸光、`confetti` 彩带。
 - **模拟真实界面**：`chatBubbles`（AI 先显示“正在输入”的三个点，再逐字回答）、`terminal`、`codeBlock`、`browserWindow`。讲 AI 或编程时特别有说服力。
 - **转场也是叙事**：`zoom` 推进到下一层细节、`glitch` 进入机器内部、`iris` 聚焦到一点、`split` 劈开揭示、`shutter` 百叶窗切换，都可以在场景里单独指定。
+- **生成式背景和模拟**：粒子神经网络 `networkField`（讲 AI、模型内部）、噪声流场 `flowField`（数据流动）、`emitter` 喷出数据、火花、烟、雪、`makeFlock` 鸟群（很多 Agent 协作）、`branchTree` 递归树（多条思路里选中一条）、3D 点云 `drawPointCloud`（词向量空间）、`rollDown`（梯度下降）。背景类效果要调低透明度，不要抢主体。
 - **声音配合动作**：弹出配 `pop`，答对配 `success`，出错配 `error`，大字登场前配 `swell`。
 
 声音和画面都要卡在台词的具体词上（用 `S.word`），这是“精致感”最主要的来源。

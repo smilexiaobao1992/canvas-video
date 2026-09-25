@@ -114,6 +114,8 @@ const SCENES = {
       .sort((a, b) => Math.abs(a - focus) - Math.abs(b - focus));
     const reveal = prog(lt, l1.s, l1.s + 0.8);
     const top = rowY - 34;
+    // backdrop: a drifting neural-network field with signals hopping along its links
+    networkField(t, { rect: { x0: 40, y0: 150, x1: W - 40, y1: 600 }, n: 80, linkDist: 190, seed: 11, alpha: 0.28 + 0.2 * reveal, signals: 12, dot: 3.5 });
     // arcs
     targets.forEach((i, order) => {
       const w = weights[i] ?? 0.06;
@@ -326,76 +328,36 @@ const SCENES = {
   },
 
   reason(lt, S, t) {
-    const l0 = S.L(0), l2 = S.L(2);
+    const l0 = S.L(0), l1 = S.L(1), l2 = S.L(2);
     drawTag('推理模型', '先在心里试几条路', prog(lt, 0.2, 1.3));
-    const Q = [300, 580], A = [1660, 580];
-    // construction rings around the nodes
-    ctx.save();
-    ctx.strokeStyle = withAlpha(C.note, 0.2); ctx.lineWidth = 1.5; ctx.setLineDash([6, 10]);
-    for (const [cx, cy] of [Q, A]) for (const r of [110, 190]) { ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke(); }
-    ctx.restore();
-    const paths = [
-      { c: [Q, [700, 420], [1200, 760], A], label: '2×4=8 → 3+8=11', ok: true },
-      { c: [Q, [560, 330], [880, 280], [1220, 320]], label: '3+4=7', ok: false },
-      { c: [Q, [560, 920], [860, 940], [1180, 880]], label: '(3+2)×4=20', ok: false },
-      { c: [Q, [520, 500], [760, 360], [1000, 400]], label: '3×2+4=10', ok: false },
-    ];
-    // weight simulation (precomputed history, see SIM below)
-    const it = clamp((lt - SIM.t0) / SIM.dt, 0, SIM.hist.length - 1);
-    const i0 = Math.floor(it), f = it - i0;
-    const w = SIM.hist[i0].map((v, i) => lerp(v, SIM.hist[Math.min(i0 + 1, SIM.hist.length - 1)][i], f));
-    const sum = w.reduce((a, b) => a + b, 0);
-    const share = w.map((v) => v / sum);
-    // paths
-    paths.forEach((p, i) => {
-      const grow = easeOut(prog(lt, 0.3 + i * 0.2, 1.3 + i * 0.2));
-      const fn = (u) => bz(p.c, u);
-      const dead = !p.ok && lt > l0.s + 2.5 + i * 0.5;
-      const color = p.ok ? (share[0] > 0.4 ? C.ok : C.ink) : C.ink;
-      strokeSamples(samplePath(fn, grow), { color, width: 3 + share[i] * 26, alpha: p.ok ? 0.9 : 0.2 + share[i] * 1.6, dash: dead ? [12, 12] : null });
-      if (grow >= 1) {
-        const lp = bz(p.c, 0.55);
-        text(p.label, lp.x, lp.y - (p.ok ? 58 : 34), { size: 28, color: p.ok ? C.ok : C.note, alpha: prog(lt, 1.4, 2) });
-      }
-      if (!p.ok && grow >= 1) {
-        const e = p.c[3];
-        ctx.fillStyle = C.surface; ctx.strokeStyle = C.ink; ctx.lineWidth = 3;
-        ctx.beginPath(); ctx.arc(e[0], e[1], 16, 0, Math.PI * 2); ctx.fill(); strokeInk();
-        drawCross(e[0] + 40, e[1] - 10, 34, prog(lt, l0.s + 2.5 + i * 0.5, l0.s + 2.9 + i * 0.5));
-      }
+    const G = reasonGeom();
+    // candidate lines of thought grow as a tree; the wrong ones fade and get crossed out, the right one lights up
+    const focus = prog(lt, l1.s, l1.e);
+    branchTree(G.Q[0], G.Q[1], prog(lt, 0.4, l0.e), { ...G.tree, focus, labels: G.labels, labelSize: 24 });
+    G.tips.forEach((tip, i) => {
+      if (i === G.good) return;
+      // the cross goes right after the tip's label
+      drawCross(tip.x + 18 + measure(G.labels[i], 24) + 26, tip.y, 22, prog(lt, l1.s + 0.2 + i * 0.12, l1.s + 0.5 + i * 0.12));
     });
-    // thought particles, distributed by current path shares
-    const N = 28;
-    const cum = share.map((_, i) => share.slice(0, i + 1).reduce((a, b) => a + b, 0));
-    if (lt > 1.4) {
-      for (let k = 0; k < N; k++) {
-        const q = (k + 0.5) / N;
-        const pi = cum.findIndex((c) => q <= c);
-        const u = frac(lt * 0.28 + k * 0.618);
-        const pt = bz(paths[pi].c, u);
-        if (paths[pi].ok) { if (k % 3 === 0) sparkle(pt.x, pt.y, 7, C.ok); else { ctx.fillStyle = C.ok; ctx.beginPath(); ctx.arc(pt.x, pt.y, 5, 0, Math.PI * 2); ctx.fill(); } }
-        else { ctx.fillStyle = C.note; ctx.globalAlpha = 1 - u * 0.8; ctx.beginPath(); ctx.arc(pt.x, pt.y, 5, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1; }
-      }
-    }
+    // the winning tip hands its result to the answer node
+    const link = easeInOut(prog(lt, l1.e - 0.3, l2.s + 0.6));
+    const tip = G.tips[G.good];
+    const lx = tip.x + 18 + measure(G.labels[G.good], 24) + 16;
+    pathWithArrow((u) => ({ x: lerp(lx, G.A[0] - 64, u), y: lerp(tip.y, G.A[1], u) }), link, { color: C.ok, width: 5 });
+    glowPulse(tip.x, tip.y, 50, t, C.ok, focus);
     // nodes
     ctx.fillStyle = C.surface; ctx.strokeStyle = C.ink; ctx.lineWidth = 4;
-    ctx.beginPath(); ctx.arc(Q[0], Q[1], 58, 0, Math.PI * 2); ctx.fill(); strokeInk();
-    text('问题', Q[0], Q[1] + 2, { size: 36 });
-    const solved = easeOutBack(prog(lt, l2.s + 1.4, l2.s + 1.9));
-    ctx.fillStyle = solved > 0 ? C.ok : C.surface;
-    ctx.beginPath(); ctx.arc(A[0], A[1], 60 * (1 + 0.25 * Math.sin(Math.PI * clamp(solved))), 0, Math.PI * 2); ctx.fill(); strokeInk();
-    text(solved > 0 ? '11' : '…', A[0], A[1] + 2, { size: 44, color: solved > 0 ? C.surface : C.ink, weight: 700 });
-    if (solved > 0) {
-      const burst = prog(lt, l2.s + 1.4, l2.s + 2.4);
-      sparkle(A[0] + 52, A[1] - 52, 14 * (1 - burst * 0.5), C.ok);
-      for (let k = 0; k < 8; k++) {
-        const a = (k / 8) * Math.PI * 2, d = 70 + burst * 110;
-        sparkle(A[0] + Math.cos(a) * d, A[1] + Math.sin(a) * d, 5, C.ok, 1 - burst);
-      }
-    }
-    text('答案', A[0], A[1] + 92, { size: 30, color: C.note });
-    drawProgress(80, 180, 300, share[0], '把握');
-    drawRole('host', 1700, 960, 0.5, t, { mood: solved > 0 ? 'happy' : 'normal', seed: 5 });
+    ctx.beginPath(); ctx.arc(G.Q[0], G.Q[1], 58, 0, Math.PI * 2); ctx.fill(); strokeInk();
+    text('问题', G.Q[0], G.Q[1] + 2, { size: 36 });
+    const solvedAt = l2.s + 1.4, solved = easeOutBack(prog(lt, solvedAt, solvedAt + 0.5));
+    const [ax, ay] = G.A;
+    ctx.fillStyle = solved > 0 ? C.ok : C.surface; ctx.strokeStyle = C.ink; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.arc(ax, ay, 60 * (1 + 0.25 * Math.sin(Math.PI * clamp(solved))), 0, Math.PI * 2); ctx.fill(); strokeInk();
+    text(solved > 0 ? '11' : '…', ax, ay + 2, { size: 44, color: solved > 0 ? C.surface : C.ink, weight: 700 });
+    emitter(t, { preset: 'sparks', x: ax, y: ay, start: S.start + solvedAt, stop: S.start + solvedAt + 0.35, color: C.ok, seed: 8 });
+    text('答案', ax, ay + 92, { size: 30, color: C.note });
+    drawProgress(80, 180, 300, lerp(0.25, 0.95, focus), '把握');
+    drawRole('host', 1700, 960, 0.5, t, { mood: solved > 0 ? 'happy' : 'normal', lookAt: { x: ax, y: ay }, seed: 5 });
   },
 
   outro(lt, S, t) {
@@ -436,6 +398,16 @@ const SCENES = {
   },
 };
 
+// reasoning tree: 8 candidate lines of thought, index 5 (path [1, 0, 1]) is the right one
+function reasonGeom() {
+  const Q = [240, 600], tree = { depth: 4, len: 290, angle: 0, spread: 0.36, shrink: 0.76, branches: 2, seed: 3, width: 9, highlight: [1, 0, 1] };
+  const nodes = treeNodes({ depth: tree.depth, len: tree.len, angle: tree.angle, spread: tree.spread, shrink: tree.shrink, seed: tree.seed, branches: tree.branches });
+  const tips = nodes.filter((n) => n.tip).map((n) => ({ x: Q[0] + n.x2, y: Q[1] + n.y2 }));
+  const good = 5, A = [tips[good].x + 400, tips[good].y];
+  const labels = ['3+4=7', '3×4=12', '2+4=6', '(3+2)×4=20', '3×2+4=10', '2×4=8 → 3+8=11', '4−2=2', '3+2+4=9'];
+  return { Q, A, tree, tips, good, labels };
+}
+
 function outroSteps(S) {
   const l2 = S.L(2), ground = 880, bw = 150;
   const labels = ['2袋', '×4', '=8', '3+8', '=11', '✓'];
@@ -475,9 +447,10 @@ const CAMS = {
     return { x: lerp(W / 2, 1000, k), y: lerp(H / 2, 520, k), z: 1 + 0.14 * k };
   },
   reason(lt, S) {
-    const l2 = S.L(2);
+    const l2 = S.L(2), G = reasonGeom();
     const k1 = easeInOut(prog(lt, 0.2, 2.4)), k2 = easeInOut(prog(lt, l2.s + 0.8, l2.s + 2.2));
-    return { x: lerp(lerp(300, W / 2, k1), 1350, k2), y: lerp(580, H / 2, k1) + (500 - H / 2) * k2, z: lerp(lerp(1.6, 1, k1), 1.12, k2) };
+    const fx = lerp(lerp(G.Q[0], W / 2, k1), W / 2 + 60, k2), fy = lerp(lerp(G.Q[1], H / 2 + 40, k1), H / 2 + 40, k2);
+    return { x: fx, y: fy, z: lerp(lerp(1.5, 1, k1), 1.04, k2) };
   },
   outro(lt, S) {
     const { bx, by } = outroBot(lt, S);
@@ -485,24 +458,3 @@ const CAMS = {
     return { x: lerp(W / 2, lerp(W / 2, bx, 0.45), k), y: lerp(H / 2, lerp(H / 2, by - 120, 0.35), k), z: 1 + 0.1 * k };
   },
 };
-
-// deterministic path-weight simulation for the "reason" scene
-const SIM = (() => {
-  const sc = window.TIMELINE.scenes.find((s) => s.id === 'reason');
-  const ls = window.TIMELINE.lines.filter((l) => l.scene === 'reason');
-  const t0 = 1.4, dt = 0.2;
-  const n = Math.floor((ls[2].start - sc.start - t0) / dt);
-  const r = mulberry32(42);
-  let w = [1, 1, 1, 1];
-  const hist = [w.slice()];
-  for (let k = 0; k < n; k++) {
-    for (let a = 0; a < 3; a++) {
-      let x = r() * w.reduce((s, v) => s + v, 0), i = 0;
-      while (i < 3 && x > w[i]) { x -= w[i]; i++; }
-      if (i === 0) w[0] += 0.3; // only the correct path reaches the answer and gets reinforced
-    }
-    w = w.map((v) => Math.max(0.03, v * 0.93)); // evaporation
-    hist.push(w.slice());
-  }
-  return { t0, dt, hist };
-})();

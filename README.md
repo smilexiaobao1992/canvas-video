@@ -8,6 +8,7 @@
 - 改一句台词，画面自动重新对齐
 - 同一套场景代码，一行参数就能换成 9 种风格中的任意一种；横屏、竖屏、方屏都支持
 - 动效库和组件库：弹簧、粒子聚字、形状变形、乱码解码、震屏；图表、代码块、终端、AI 对话界面、流程图、图标
+- 生成式效果（参考 p5.js 示例，改写成纯函数）：粒子神经网络、Perlin 噪声流场、粒子发射器（烟、火花、雪、雨、气泡、数据喷发）、鸟群、递归生长树、轻量 3D 点云、物理轨迹（梯度下降小球、弹跳）
 - 声音：配音带逐词时间戳，画面和音效可以卡在具体的词上；背景音乐和音效都用代码合成，有人声时音乐自动压低；字幕逐字高亮
 - 角色可替换、可自定义：内置机器人、人物、小猫，场景里只写角色名，由 `cast` 决定谁来演
 - 带镜头运动、转场、字幕、章节进度提示
@@ -46,7 +47,7 @@
 
 ## 动效、组件与声音
 
-见 `references/motion.md`、`references/components.md`、`references/audio.md`。`examples/components` 用一个场景演示一类效果，是最快的上手方式。
+见 `references/motion.md`、`references/generative.md`、`references/components.md`、`references/audio.md`。`examples/components` 用一个场景演示一类效果，是最快的上手方式。
 
 ## 等轴测
 
@@ -129,6 +130,7 @@ engine/
   characters.js          角色和 cast
   characters/*.js        3 个内置形象
   motion.js              动效库
+  generative.js          生成式效果（噪声、粒子、群集、树、3D、物理）
   components.js          组件库
   iso.js                 等轴测绘图函数
   load.js                按顺序加载引擎、内置形象和全部内置风格
