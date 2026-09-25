@@ -1,6 +1,6 @@
 // Neon: cyberpunk night — perspective grid, clean glowing lines, scanlines, subtitle plate.
 const NEON_SCAN = (() => {
-  const c = document.createElement('canvas'); c.width = 4; c.height = 4;
+  const c = makeCanvas(4, 4);
   const b = c.getContext('2d'); b.fillStyle = 'rgba(0, 0, 0, 0.18)'; b.fillRect(0, 0, 4, 2);
   return c;
 })();

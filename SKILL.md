@@ -1,6 +1,6 @@
 ---
 name: canvas-video
-description: 用纯代码（JS + Canvas2D）做讲解、科普类动画视频。一个 render(t) 函数画出每一帧；edge-tts 配音，带逐词时间戳，自动生成时间轴；自动加代码合成的背景音乐和音效；多个 Chrome 并行，用 WebCodecs 硬件编码导出 mp4。支持横屏 16:9、竖屏 9:16、方屏 1:1。内置 9 种可切换风格（paper 纸张手绘、blueprint 蓝图发光、chalk 黑板粉笔、neon 霓虹赛博、minimal 极简信息图、pixel 像素、ink 水墨、papercut 剪纸、isometric 等轴测）；动效库（弹簧、粒子聚字、形状变形、乱码解码、震屏、彩带）；生成式效果（粒子神经网络、噪声流场、烟雾、火花、雪、数据喷发、鸟群、递归生长树、3D 点云、梯度下降小球）；组件库（图表、代码块、终端、AI 对话界面、流程图、时间轴、对比表、图标）；可替换角色（机器人、人物、小猫，或自己用代码画的）。以下情况都应使用本 skill：用户想用代码或 Canvas 画动画视频；提到“JS 绘制每一帧”“逐帧渲染”“render(t)”“程序化动画”；想做科普、讲解、知识类短视频（包括抖音、小红书竖屏）并接受扁平或手绘画风；想给现有视频换风格、换角色；或者正在修改含有 script.json + scenes.js 的 canvas-video 项目。即使用户没提 Canvas，只要想要“像 X 上那种用 JS 画出来的讲解动画”，也用本 skill。如果用户点名要用 Canvas2D 或 canvas-video，本 skill 优先于 HyperFrames 这类基于 DOM 的视频框架。
+description: 用纯代码（JS + Canvas2D）做讲解、科普类动画视频。一个 render(t) 函数画出每一帧；edge-tts 配音，带逐词时间戳，自动生成时间轴；自动加代码合成的背景音乐和音效；多个 Chrome 并行，用 WebCodecs 硬件编码导出 mp4。支持横屏 16:9、竖屏 9:16、方屏 1:1。内置 10 种可切换风格（paper 纸张手绘、blueprint 蓝图发光、chalk 黑板粉笔、neon 霓虹赛博、minimal 极简信息图、pixel 像素、ink 水墨、papercut 剪纸、isometric 等轴测、inked 插画描边）；插画函数库（圆环隧道、旋臂星系、DNA 双螺旋、神经元、黑洞吸积盘、闪电、棱镜光谱、行星、向日葵）；动效库（弹簧、粒子聚字、形状变形、乱码解码、震屏、彩带）；生成式效果（粒子神经网络、噪声流场、烟雾、火花、雪、数据喷发、鸟群、递归生长树、3D 点云、梯度下降小球）；组件库（图表、代码块、终端、AI 对话界面、流程图、时间轴、对比表、图标）；可替换角色（机器人、人物、小猫，或自己用代码画的）。以下情况都应使用本 skill：用户想用代码或 Canvas 画动画视频；提到“JS 绘制每一帧”“逐帧渲染”“render(t)”“程序化动画”；想做科普、讲解、知识类短视频（包括抖音、小红书竖屏）并接受扁平或手绘画风；想给现有视频换风格、换角色；或者正在修改含有 script.json + scenes.js 的 canvas-video 项目。即使用户没提 Canvas，只要想要“像 X 上那种用 JS 画出来的讲解动画”，也用本 skill。如果用户点名要用 Canvas2D 或 canvas-video，本 skill 优先于 HyperFrames 这类基于 DOM 的视频框架。
 ---
 
 # canvas-video：用代码画出每一帧
@@ -112,7 +112,7 @@ const SFX = { intro: (S) => [{ at: S.word(0, '智能体'), sound: 'pop' }] };   
 - **镜头**：`CAMS[id]` 返回 `{x, y, z}`，用 `shake()` 震屏、`punchIn()` 快速推近。`drawTag`、`drawProgress` 和用 `pinned()` 包起来的内容不受镜头影响。
 - **音效**：`SFX[id](S)` 返回 `[{ at, sound, volume }]`。可用的声音有：`whoosh`、`pop`、`ding`、`success`、`error`、`click`、`type`、`swell`、`glitch`。
 
-完整 API：`references/primitives.md`（基础）、`references/motion.md`（动效）、`references/generative.md`（生成式效果）、`references/components.md`（组件）、`references/audio.md`（声音）。
+完整 API：`references/primitives.md`（基础）、`references/motion.md`（动效）、`references/generative.md`（生成式效果）、`references/illustrate.md`（插画主体）、`references/components.md`（组件）、`references/audio.md`（声音）。
 
 ## 让动画有新意（重要）
 
@@ -128,6 +128,7 @@ const SFX = { intro: (S) => [{ at: S.word(0, '智能体'), sound: 'pop' }] };   
 - **模拟真实界面**：`chatBubbles`（AI 先显示“正在输入”的三个点，再逐字回答）、`terminal`、`codeBlock`、`browserWindow`。讲 AI 或编程时特别有说服力。
 - **转场也是叙事**：`zoom` 推进到下一层细节、`glitch` 进入机器内部、`iris` 聚焦到一点、`split` 劈开揭示、`shutter` 百叶窗切换、`portal` 钻进上一幕的某个物体（一只眼睛、一块屏幕）再从里面展开下一幕，都可以在场景里单独指定。
 - **生成式背景和模拟**：粒子神经网络 `networkField`（讲 AI、模型内部）、噪声流场 `flowField`（数据流动）、`emitter` 喷出数据、火花、烟、雪、`makeFlock` 鸟群（很多 Agent 协作）、`branchTree` 递归树（多条思路里选中一条）、3D 点云 `drawPointCloud`（词向量空间）、`rollDown`（梯度下降）。背景类效果要调低透明度，不要抢主体。
+- **插画镜头**（效果最强）：一句台词一镜，每镜一个占画面 40% 以上的大插画主体（`ringTunnel` 隧道、`galaxyDisk` 星系、`helix3D` 双螺旋、`dendrites` 神经元、`accretionDisk` 黑洞、`lightning` 闪电、`prismSpectrum` 棱镜、`planet` 行星、`phyllotaxis` 向日葵，或用 `inkShape` 自己画），画面上几乎不放文字，同一个主角贯穿全片，用 `portal` 钻进主角来换镜。见 `references/illustrate.md` 和 `examples/token-journey`。
 - **背景氛围**：每一幕换一个 `backdrop`，让背景跟着内容变：讲模型内部用 `network`，数据流动用 `flow`，开场聚焦用 `spotlight`，收尾用 `rings`；讲“旅程”“从无到有”可以用天空 `space` → `dusk` → `dawn` 串起时间感。风格自带的环境层（光斑、雾、云、浮尘）会一直缓慢流动，镜头推近时背景各层有视差。
 - **手绘质感**：`pencilFill` 彩铅排线填充、`speedLines` 冲刺速度线，适合做有手作感的关键画面。
 - **声音配合动作**：弹出配 `pop`，答对配 `success`，出错配 `error`，大字登场前配 `swell`。
@@ -153,6 +154,7 @@ const SFX = { intro: (S) => [{ at: S.word(0, '智能体'), sound: 'pop' }] };   
 | `ink` | 宣纸、毛笔墨晕、远山、朱红印章 | blot 墨迹晕开 |
 | `papercut` | 分层彩纸、硬投影、纸山 | slide 纸片滑入 |
 | `isometric` | 柔和配色、30° 斜网格，配合 `iso.js` 画立体 | fade |
+| `inked` | 深紫夜色底、粗描边插画、排线纹理、星尘，配合 `illustrate.js` | portal |
 
 所有转场：`wipe`、`erase`、`blot`、`slide`、`dissolve`、`fade`、`iris`、`zoom`、`glitch`、`split`、`shutter`、`cut`。
 
@@ -175,3 +177,4 @@ const SFX = { intro: (S) => [{ at: S.word(0, '智能体'), sound: 'pop' }] };   
 - `examples/components/`：组件和动效大全，一个场景演示一类，每一幕的转场都不同。写新场景前先看这里。
 - `examples/llm-reasoning/`：63 秒的完整作品，讲“大模型是怎么推理出答案的”，paper 和 blueprint 交替使用。
 - `examples/iso-city/`：15 秒的等轴测短片。
+- `examples/token-journey/`：50 秒、14 镜的插画短片《一个 token 的旅程》，inked 风格，每镜一个插画主体。想要“酷”的视觉效果先看这个。

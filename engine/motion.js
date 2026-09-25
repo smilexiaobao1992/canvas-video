@@ -301,7 +301,7 @@ Object.assign(TRANSITIONS, {
     const open = easeInOut(prog(wp, 0.3, 1)), R = Math.hypot(W, H) * open;
     if (R > 0) {
       ctx.beginPath(); ctx.arc(lerp(fx, W / 2, open), lerp(fy, H / 2, open), R, 0, Math.PI * 2); ctx.clip();
-      const s2 = lerp(0.35, 1, open);
+      const s2 = lerp(1.6, 1, open);
       ctx.translate(lerp(fx, W / 2, open), lerp(fy, H / 2, open)); ctx.scale(s2, s2); ctx.drawImage(next, -W / 2, -H / 2);
     }
     ctx.restore();

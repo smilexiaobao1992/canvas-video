@@ -7,7 +7,8 @@ const W = (window.TIMELINE && window.TIMELINE.width) || 1920, H = (window.TIMELI
 const CANVAS = document.getElementById('c');
 CANVAS.width = W; CANVAS.height = H;
 // snapshots read pixels back constantly; a CPU-backed canvas keeps them bit-stable across runs
-const MAIN = CANVAS.getContext('2d', { willReadFrequently: new URLSearchParams(location.search).has('snap') });
+const SNAP = new URLSearchParams(location.search).has('snap');
+const MAIN = CANVAS.getContext('2d', { willReadFrequently: SNAP });
 const ASPECT = W / H > 1.2 ? 'wide' : W / H < 0.8 ? 'tall' : 'square';
 // screen-space layout for pinned elements; SAFE is the area scenes should keep important content in
 const LAYOUT = {
@@ -348,7 +349,9 @@ function bgDust(b, rgb, r, n = 6000, maxAlpha = 0.06, size = 1.6) {
 }
 
 // ---------- caches: backgrounds, vignette, grain ----------
-function makeCanvas(w, h) { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
+// offscreen canvases follow the main canvas: in snapshot mode they are CPU-backed too, otherwise Chrome may rasterize
+// their deferred draws (blurs, gradients) on GPU or CPU depending on timing, and the same frame renders differently
+function makeCanvas(w, h) { const c = document.createElement('canvas'); c.width = w; c.height = h; c.getContext('2d', { willReadFrequently: SNAP }); return c; }
 const BG_CACHE = {}, VIG_CACHE = {};
 // pre-rendered sprite, built once per key (put expensive blurs/gradients here and just move the sprite each frame)
 const SPRITES = {};
@@ -358,10 +361,12 @@ function sprite(key, w, h, draw) {
 }
 // soft round light blob (radial gradient) as a cached sprite; drawn centered at (x, y) with radius r
 function lightBlob(x, y, r, color, alpha = 1, c = ctx) {
-  const img = sprite(`blob|${color}`, 256, 256, (b) => {
-    const g = b.createRadialGradient(128, 128, 0, 128, 128, 128);
-    g.addColorStop(0, color); g.addColorStop(1, 'rgba(0, 0, 0, 0)');
-    b.fillStyle = g; b.fillRect(0, 0, 256, 256);
+  const img = sprite(`blob|${color}`, 512, 512, (b) => {
+    // gaussian-like falloff in many stops (smooth when scaled up); fade to the same color, because canvas gradients
+    // interpolate unpremultiplied and fading to transparent black would gray the edge
+    const g = b.createRadialGradient(256, 256, 0, 256, 256, 256);
+    for (let i = 0; i <= 12; i++) { const u = i / 12; g.addColorStop(u, withAlpha(color, i === 12 ? 0 : Math.exp(-u * u * 4.5))); }
+    b.fillStyle = g; b.fillRect(0, 0, 512, 512);
   });
   c.save(); c.globalAlpha *= alpha; c.drawImage(img, x - r, y - r, r * 2, r * 2); c.restore();
 }

@@ -1,0 +1,33 @@
+{
+  "voice": "zh-CN-YunxiNeural",
+  "rate": "+6%",
+  "fps": 30,
+  "format": "16:9",
+  "style": "inked",
+  "brand": null,
+  "hud": false,
+  "subtitles": {
+    "highlight": true
+  },
+  "audio": {
+    "music": "deep",
+    "musicVolume": 0.18,
+    "sfx": true
+  },
+  "scenes": [
+    { "id": "enter", "title": "回车", "lead": 0.7, "hold": 0.5, "lines": ["你按下回车。"] },
+    { "id": "split", "title": "切开", "transition": "cut", "lead": 0.2, "hold": 0.4, "lines": ["一句话被切成一个个 token。"] },
+    { "id": "pick", "title": "猫", "transition": "cut", "lead": 0.2, "hold": 0.9, "lines": ["其中一个，是“猫”。"] },
+    { "id": "vector", "title": "向量", "backdrop": "dusk", "backdropOpacity": 0.7, "transition": "portal", "transitionDuration": 1, "lead": 0.5, "hold": 0.6, "lines": ["进门第一件事，它被换成一长串数字。"] },
+    { "id": "galaxy", "title": "词的星系", "backdrop": "space", "transition": "zoom", "lead": 0.3, "hold": 0.5, "lines": ["在这个空间里，意思相近的词住得很近。"] },
+    { "id": "planets", "title": "邻居", "backdrop": "space", "transition": "portal", "transitionFocus": [714, 490], "transitionDuration": 0.9, "lead": 0.3, "hold": 0.9, "lines": ["猫挨着狗和老虎，离纸箱很远。"] },
+    { "id": "tunnel", "title": "穿过网络", "transition": "portal", "transitionFocus": [384, 526], "transitionDuration": 0.9, "lead": 0.3, "hold": 0.5, "lines": ["然后，它要穿过几十层网络。"] },
+    { "id": "neuron", "title": "回头看", "transition": "cut", "lead": 0.2, "hold": 0.4, "lines": ["每一层，它都会回头看看句子里的其他字，"] },
+    { "id": "absorb", "title": "吸收", "backdrop": "space", "transition": "cut", "lead": 0.1, "hold": 0.6, "lines": ["把有用的信息吸进来。"] },
+    { "id": "insight", "title": "明白", "transition": "cut", "lead": 0.3, "hold": 0.9, "lines": ["越往深处，它越明白：这里问的是猫的习性。"] },
+    { "id": "prism", "title": "概率", "backdrop": "space", "transition": "portal", "transitionFocus": [960, 734], "transitionDuration": 0.9, "lead": 0.3, "hold": 0.6, "lines": ["走到最后一层，它变成一张概率表。"] },
+    { "id": "choose", "title": "选词", "backdrop": "space", "transition": "cut", "lead": 0.1, "hold": 0.8, "lines": ["下一个词，最有可能是“因为”。"] },
+    { "id": "again", "title": "再出发", "backdrop": "space", "transition": "zoom", "lead": 0.3, "hold": 0.8, "lines": ["“因为”被接到句子后面，又一个 token 从头出发。"] },
+    { "id": "bloom", "title": "开花", "backdrop": "dawn", "transition": "iris", "lead": 0.4, "hold": 2.2, "lines": ["你看到的每一句回答，都是这样一趟一趟跑出来的。"] }
+  ]
+}

@@ -374,7 +374,7 @@ function bounce(t, o = {}) {
 // fill the current path with pencil hatching (like colored-pencil or cross-hatched shading); call right after building a path
 function pencilFill(o = {}) {
   const { color = C.ink, angle = -0.9, spacing = 7, width = 1.6, cross = false, alpha = 0.8, seed = 3, bounds = null } = o;
-  const r = mulberry32(seed);
+  const r = mulberry32(seed), base = ctx.globalAlpha;
   ctx.save(); ctx.clip();
   const b = bounds || { x: -W, y: -H, w: W * 3, h: H * 3 };
   const cx = b.x + b.w / 2, cy = b.y + b.h / 2, L = Math.hypot(b.w, b.h);
@@ -382,7 +382,7 @@ function pencilFill(o = {}) {
     ctx.save(); ctx.translate(cx, cy); ctx.rotate(ang);
     ctx.strokeStyle = color; ctx.lineCap = 'round';
     for (let y = -L / 2; y < L / 2; y += spacing) {
-      ctx.globalAlpha = alpha * (0.45 + 0.55 * r()); ctx.lineWidth = width * (0.6 + r() * 0.8);
+      ctx.globalAlpha = base * alpha * (0.45 + 0.55 * r()); ctx.lineWidth = width * (0.6 + r() * 0.8);
       const j = (r() - 0.5) * spacing * 0.6;
       ctx.beginPath(); ctx.moveTo(-L / 2, y + j); ctx.quadraticCurveTo(0, y + j + (r() - 0.5) * 6, L / 2, y + j + (r() - 0.5) * 4); ctx.stroke();
     }
