@@ -2,8 +2,19 @@
  * Plain script (no ES modules) so the page works when opened from file://.
  * Contract: every frame is a pure function of time t. Scenes never keep state between frames.
  */
-const W = 1920, H = 1080;
-const MAIN = document.getElementById('c').getContext('2d');
+// canvas size comes from the timeline ("format" in script.json): 16:9 1920x1080, 9:16 1080x1920, 1:1 1080x1080
+const W = (window.TIMELINE && window.TIMELINE.width) || 1920, H = (window.TIMELINE && window.TIMELINE.height) || 1080;
+const CANVAS = document.getElementById('c');
+CANVAS.width = W; CANVAS.height = H;
+const MAIN = CANVAS.getContext('2d');
+const ASPECT = W / H > 1.2 ? 'wide' : W / H < 0.8 ? 'tall' : 'square';
+// screen-space layout for pinned elements; SAFE is the area scenes should keep important content in
+const LAYOUT = {
+  wide:   { tag: { x: 80, y: 110, size: 72, sub: 34 }, hud: { x: W - 130, y: 138 }, logo: { x: W - 110, y: 58 }, sub: { y: H - 60, maxW: W - 400, lines: 2, scale: 1 }, safe: { x0: 80, y0: 200, x1: W - 80, y1: H - 140 } },
+  square: { tag: { x: 60, y: 100, size: 60, sub: 30 }, hud: { x: W - 100, y: 128 }, logo: { x: W - 80, y: 52 }, sub: { y: H - 70, maxW: W - 160, lines: 2, scale: 1.1 }, safe: { x0: 60, y0: 180, x1: W - 60, y1: H - 170 } },
+  tall:   { tag: { x: 64, y: 170, size: 66, sub: 32 }, hud: { x: W - 90, y: 250 }, logo: { x: W - 70, y: 100 }, sub: { y: H * 0.84, maxW: W - 160, lines: 3, scale: 1.25 }, safe: { x0: 60, y0: 320, x1: W - 60, y1: H * 0.7 } },
+}[ASPECT];
+const SAFE = LAYOUT.safe;
 let ctx = MAIN; // primitives always draw into `ctx`; transitions may swap it to an offscreen canvas
 
 // ---------- styles ----------
@@ -19,7 +30,7 @@ const STYLE_DEFAULTS = {
   hardShadow: { alpha: 0.35, blur: 0 },
   pixelate: 0, // > 1: render the frame at 1/N resolution and upscale without smoothing
   texture: { grain: 0, vignette: null },
-  transition: 'fade', // 'wipe' | 'erase' | 'fade' | 'cut'
+  transition: 'fade', // see TRANSITIONS below and in motion.js
   subtitle: { size: 36, color: null, plate: false },
   background(b, w, h, P) { b.fillStyle = P.bg; b.fillRect(0, 0, w, h); },
   overlay: null,
@@ -295,11 +306,15 @@ function pinned(fn) { ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); fn(); ctx.
 function drawTag(big, small, p) {
   if (p <= 0) return;
   pinned(() => {
-    text(typed(big, p * 1.8), 80, 110, { size: 72, align: 'left', role: 'title' });
-    const w = measure(big, 72, 400, 'title');
-    text(typed(small, (p - 0.45) / 0.55), 80 + w + 24, 122, { size: 34, color: C.note, align: 'left' });
+    const { x, y, size, sub } = LAYOUT.tag;
+    text(typed(big, p * 1.8), x, y, { size, align: 'left', role: 'title' });
+    const w = measure(big, size, 400, 'title');
+    // subtitle sits to the right on wide screens, under the title on narrow ones
+    const [sx, sy] = ASPECT === 'wide' ? [x + w + 24, y + 12] : [x, y + size * 1.25];
+    text(typed(small, (p - 0.45) / 0.55), sx, sy, { size: sub, color: C.note, align: 'left' });
     const u = easeOut(prog(p, 0.35, 1));
-    if (u > 0) strokeSamples(samplePath((k) => ({ x: 78 + k * (w + 8), y: 160 - Math.sin(k * Math.PI) * 4 + k * 3 }), u, 30), { color: C.ink, width: 3.5 });
+    const uy = y + size * 0.7;
+    if (u > 0) strokeSamples(samplePath((k) => ({ x: x - 2 + k * (w + 8), y: uy - Math.sin(k * Math.PI) * 4 + k * 3 }), u, 30), { color: C.ink, width: 3.5 });
   });
 }
 // meter bar with ticks and a percentage label
@@ -322,7 +337,7 @@ function bgGuides(b, color) {
   b.strokeStyle = color; b.lineWidth = 1.5;
   for (const r of [300, 420, 560]) { b.beginPath(); b.arc(W * 0.66, H * 0.48, r, 0, Math.PI * 2); b.stroke(); }
   b.setLineDash([8, 12]); b.beginPath(); b.moveTo(0, H * 0.66); b.lineTo(W, H * 0.66); b.moveTo(W * 0.2, 0); b.lineTo(W * 0.2, H); b.stroke(); b.setLineDash([]);
-  for (const [x, y] of [[140, 260], [1780, 240], [1760, 900], [160, 880]]) { b.beginPath(); b.moveTo(x - 12, y); b.lineTo(x + 12, y); b.moveTo(x, y - 12); b.lineTo(x, y + 12); b.stroke(); }
+  for (const [x, y] of [[W * 0.073, H * 0.24], [W * 0.927, H * 0.22], [W * 0.917, H * 0.83], [W * 0.083, H * 0.815]]) { b.beginPath(); b.moveTo(x - 12, y); b.lineTo(x + 12, y); b.moveTo(x, y - 12); b.lineTo(x, y + 12); b.stroke(); }
   b.restore();
 }
 // scattered specks (paper fibres, chalk dust, star field)
@@ -374,7 +389,6 @@ function drawGrain(t, s) {
 
 // ---------- scene runtime ----------
 let SCENE_LIST = [], SCENE_FNS = {}, CAM_FNS = {}, TL = null, CUR_SCENE = null;
-const TRANSITION = 0.6;
 const OFF = makeCanvas(W, H), OFF_CTX = OFF.getContext('2d');
 
 function drawScene(S, lt, t) {
@@ -389,7 +403,12 @@ function drawScene(S, lt, t) {
   ctx.restore();
 }
 
-// each transition reveals the incoming scene (drawNext) over the frozen last frame of the previous one
+// helpers for transitions that need the previous or next frame as an image
+const PREV = makeCanvas(W, H);
+function grabPrev() { const b = PREV.getContext('2d'); b.clearRect(0, 0, W, H); b.drawImage(ctx.canvas, 0, 0); return PREV; }
+function renderOff(drawNext) { const prev = ctx; ctx = OFF_CTX; ctx.reset(); drawNext(); ctx = prev; return OFF; }
+
+// each transition reveals the incoming scene (drawNext) over the frozen last frame of the previous one (already on ctx)
 const TRANSITIONS = {
   wipe(drawNext, wp) {
     const ex = lerp(-360, W + 360, wp);
@@ -439,33 +458,31 @@ const TRANSITIONS = {
   },
   // blocks of the new scene appear in a seeded random order
   dissolve(drawNext, wp) {
-    const cols = 32, rows = 18, bw = W / cols, bh = H / rows, r = mulberry32(5);
+    const cols = 32, rows = Math.round((32 * H) / W), bw = W / cols, bh = H / rows, r = mulberry32(5);
     ctx.save(); ctx.beginPath();
     for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) if (r() < wp) ctx.rect(i * bw, j * bh, bw + 0.5, bh + 0.5);
     ctx.clip(); drawNext(); ctx.restore();
   },
   fade(drawNext, wp) {
-    const prev = ctx;
-    ctx = OFF_CTX; ctx.reset();
-    drawNext();
-    ctx = prev;
-    ctx.save(); ctx.globalAlpha = wp; ctx.drawImage(OFF, 0, 0); ctx.restore();
+    const next = renderOff(drawNext);
+    ctx.save(); ctx.globalAlpha = wp; ctx.drawImage(next, 0, 0); ctx.restore();
   },
 };
 
 function drawLogo() {
   if (!TL.brand) return;
   ctx.save();
-  ctx.translate(1810, 58);
+  const { x, y } = LAYOUT.logo;
+  ctx.translate(x, y);
   ctx.transform(1, 0, -0.18, 1, 0, 0);
   text(TL.brand, 0, 0, { size: 34, align: 'right', weight: 700, role: 'title' });
   ctx.restore();
   const w = measure(TL.brand, 34, 700, 'title');
-  strokeSamples(samplePath((u) => ({ x: 1804 - w + u * (w + 8), y: 84 - Math.sin(u * Math.PI) * 5 + u * 2 }), 1, 20), { color: C.ok, width: 3 });
+  strokeSamples(samplePath((u) => ({ x: x - 6 - w + u * (w + 8), y: y + 26 - Math.sin(u * Math.PI) * 5 + u * 2 }), 1, 20), { color: C.ok, width: 3 });
 }
 function drawHud(i, S, lt) {
   if (!TL.hud) return;
-  const x = 1790, y = 138;
+  const { x, y } = LAYOUT.hud;
   ctx.save();
   ctx.lineCap = 'round';
   ctx.strokeStyle = C.muted; ctx.lineWidth = 3;
@@ -476,16 +493,97 @@ function drawHud(i, S, lt) {
   ctx.restore();
   text(`${i + 1} · ${S.title}`, x - 32, y + 1, { size: 22, color: C.note, align: 'right' });
 }
+// split text into wrap units: one CJK char, or a latin word with its trailing space; closing punctuation sticks to the unit before it
+const NO_LINE_START = /^[，。、！？；：,.!?;:）)》」』”’…—]$/;
+const SEGMENTER = typeof Intl !== 'undefined' && Intl.Segmenter ? new Intl.Segmenter('zh', { granularity: 'word' }) : null;
+function wrapUnits(str) {
+  const units = [];
+  // word segmentation keeps Chinese words like 画面 together; fall back to single characters
+  const pieces = SEGMENTER ? [...SEGMENTER.segment(str)].map((x) => x.segment) : str.match(/[A-Za-z0-9_'’.-]+\s*|\s+|./gu) || [];
+  for (const m of pieces) {
+    if (units.length && NO_LINE_START.test(m.trim())) units[units.length - 1] += m;
+    else units.push(m);
+  }
+  return units;
+}
+// greedy wrap into lines no wider than maxW, then rebalance so lines have similar widths
+function wrapText(str, size, maxW, weight = 400) {
+  const units = wrapUnits(str);
+  const fill = (limit, pref = true) => {
+    const lines = [];
+    let cur = '';
+    for (const u of units) {
+      if (cur && measure(cur + u, size, weight) > limit) {
+        // prefer breaking after punctuation when it sits in the back part of the line
+        const cs = [...cur], k = Math.max(...[...'，。、！？；：,.!?;:'].map((c) => cs.lastIndexOf(c)));
+        if (pref && k > cs.length * 0.55 && k < cs.length - 1) { lines.push(cs.slice(0, k + 1).join('')); cur = cs.slice(k + 1).join('').trimStart() + u; }
+        else { lines.push(cur); cur = u.trimStart(); }
+      } else cur += u;
+    }
+    if (cur) lines.push(cur);
+    return lines.map((l) => l.trimEnd());
+  };
+  const lines = fill(maxW, false);
+  if (lines.length < 2) return lines;
+  // narrowest limit that keeps the same line count gives balanced lines; punctuation breaks win when they fit
+  const lo = measure(str, size, weight) / lines.length;
+  for (const pref of [true, false]) for (let lim = lo; lim <= maxW; lim += 12) { const t = fill(lim, pref); if (t.length === lines.length) return t; }
+  return lines;
+}
+// per-character [start, end] times (relative to the line) from the TTS word boundaries
+function charTimes(line) {
+  if (line._chars) return line._chars;
+  const chars = [...line.text], out = new Array(chars.length).fill(null);
+  let cursor = 0;
+  for (const w of line.words || []) {
+    const wc = [...w.text.trim()];
+    if (!wc.length) continue;
+    const idx = findChars(chars, wc, cursor);
+    if (idx < 0) continue;
+    wc.forEach((_, j) => { out[idx + j] = [lerp(w.s, w.e, j / wc.length), lerp(w.s, w.e, (j + 1) / wc.length)]; });
+    cursor = idx + wc.length;
+  }
+  // punctuation and anything unmatched inherits the time of the previous character
+  let last = [0, 0];
+  for (let i = 0; i < out.length; i++) { if (out[i]) last = out[i]; else out[i] = [last[1], last[1]]; }
+  line._chars = out;
+  return out;
+}
+function findChars(chars, wc, from) {
+  const lower = (c) => c.toLowerCase();
+  for (let i = from; i <= chars.length - wc.length; i++) if (wc.every((c, j) => lower(chars[i + j]) === lower(c))) return i;
+  return -1;
+}
 function drawSubtitle(t) {
   const l = TL.lines.find((x) => t >= x.start && t < x.end + 0.25);
   if (!l) return;
-  const st = STYLE.subtitle;
+  const st = STYLE.subtitle, L = LAYOUT.sub;
+  let size = Math.round(st.size * L.scale), lines = wrapText(l.text, size, L.maxW);
+  while (lines.length > L.lines && size > 20) { size = Math.round(size * 0.9); lines = wrapText(l.text, size, L.maxW); }
+  const lh = size * 1.35, y0 = L.y - (lines.length - 1) * lh;
+  const color = st.color || C.ink;
   if (st.plate) {
-    const w = measure(l.text, st.size) + 56;
-    ctx.save(); ctx.beginPath(); ctx.roundRect(W / 2 - w / 2, 1020 - st.size * 0.95, w, st.size * 1.9, 12);
+    const w = Math.max(...lines.map((x) => measure(x, size))) + 56;
+    ctx.save(); ctx.beginPath(); ctx.roundRect(W / 2 - w / 2, y0 - size * 0.95, w, (lines.length - 1) * lh + size * 1.9, 12);
     ctx.fillStyle = withAlpha(C.bg, 0.78); ctx.fill(); ctx.restore();
   }
-  text(l.text, W / 2, 1020, { size: st.size, color: st.color || C.ink });
+  const highlight = TL.subtitles && TL.subtitles.highlight && l.words;
+  const times = highlight ? charTimes(l) : null;
+  let spoken = Infinity;
+  if (highlight) { const lt = t - l.start; spoken = times.filter(([s]) => s <= lt).length; }
+  const chars = [...l.text];
+  let k = 0;
+  lines.forEach((ln, i) => {
+    const y = y0 + i * lh, lc = [...ln];
+    if (!highlight) { text(ln, W / 2, y, { size, color }); return; }
+    // locate this wrapped line inside the original text (wrapping drops the spaces it broke on)
+    const start = Math.max(k, findChars(chars, lc, k));
+    const x0 = W / 2 - measure(ln, size) / 2;
+    const done = clamp(spoken - start, 0, lc.length);
+    text(ln, x0, y, { size, color: withAlpha(color, 0.38), align: 'left' });
+    if (done > 0) text(lc.slice(0, done).join(''), x0, y, { size, color, align: 'left' });
+    k = start + lc.length;
+  });
 }
 
 const PIX = makeCanvas(W, H), PIX_CTX = PIX.getContext('2d');
@@ -503,8 +601,8 @@ function render(t) {
   const i = sceneIndexAt(t);
   const S = SCENE_LIST[i];
   const lt = t - S.start;
-  const tr = STYLES[S.style].transition;
-  const wp = i > 0 ? easeInOut(prog(lt, 0, TRANSITION)) : 1;
+  const tr = S.transition;
+  const wp = i > 0 ? easeInOut(prog(lt, 0, S.tdur)) : 1;
   if (wp < 1 && tr !== 'cut') {
     const P = SCENE_LIST[i - 1];
     drawScene(P, P.dur - 0.001, P.end - 0.001);
@@ -525,7 +623,11 @@ function render(t) {
 }
 
 // ---------- boot: preview UI + export hooks ----------
-function boot({ scenes, cams = {} }) {
+function boot({ scenes, cams, sfx } = {}) {
+  // SCENES / CAMS / SFX declared with const in scenes.js share the global lexical scope, so they can be picked up by name
+  scenes = scenes || SCENES;
+  cams = cams || (typeof CAMS !== 'undefined' ? CAMS : {});
+  sfx = sfx || (typeof SFX !== 'undefined' ? SFX : {});
   TL = window.TIMELINE;
   if (!TL) throw new Error('timeline.js is missing — run `node scripts/tts.mjs` first');
   const params = new URLSearchParams(location.search);
@@ -539,22 +641,54 @@ function boot({ scenes, cams = {} }) {
     if (!STYLES[style]) throw new Error(`scene "${s.id}" uses unknown style "${style}"; available: ${Object.keys(STYLES).join(', ')}`);
     if (!scenes[s.id]) throw new Error(`scenes.js has no function for scene "${s.id}"`);
     const cast = resolveCast({ ...(TL.cast || {}), ...(s.cast || {}) }, castOverride, s.id);
+    const transition = s.transition || STYLES[style].transition;
+    if (!TRANSITIONS[transition] && transition !== 'cut') throw new Error(`scene "${s.id}" uses unknown transition "${transition}"; available: ${Object.keys(TRANSITIONS).join(', ')}, cut`);
+    const line = (k) => {
+      if (!lines[k]) throw new Error(`scene "${s.id}" has no narration line ${k} (it has ${lines.length})`);
+      return lines[k];
+    };
+    // time (relative to the scene) of `str` inside narration line k; nth picks a later occurrence
+    const wordAt = (k, str, nth, edge) => {
+      const l = line(k), chars = [...l.text], wc = [...str];
+      let idx = -1;
+      for (let n = 0, from = 0; n <= nth; n++, from = idx + 1) { idx = findChars(chars, wc, from); if (idx < 0) break; }
+      if (idx < 0) throw new Error(`scene "${s.id}" line ${k} does not contain "${str}" (occurrence ${nth}); text: ${l.text}`);
+      const ct = charTimes(l);
+      return l.start - s.start + (edge === 'e' ? ct[idx + wc.length - 1][1] : ct[idx][0]);
+    };
     return {
-      ...s, style, lines, cast, dur: s.end - s.start, last: i === TL.scenes.length - 1,
+      ...s, style, lines, cast, transition, tdur: s.transitionDuration ?? 0.6, dur: s.end - s.start, last: i === TL.scenes.length - 1,
+      word: (k, str, nth = 0) => wordAt(k, str, nth, 's'),
+      wordEnd: (k, str, nth = 0) => wordAt(k, str, nth, 'e'),
+      words: (k) => (line(k).words || []).map((w) => ({ text: w.text, s: w.s + line(k).start - s.start, e: w.e + line(k).start - s.start })),
       // true while a narration line of this scene is being spoken (drive talking mouths with it)
       speaking: (lt) => lines.some((l) => lt >= l.start - s.start && lt < l.end - s.start),
-      L: (k) => {
-        if (!lines[k]) throw new Error(`scene "${s.id}" has no narration line ${k} (it has ${lines.length})`);
-        return { s: lines[k].start - s.start, e: lines[k].end - s.start };
-      },
+      L: (k) => ({ s: line(k).start - s.start, e: line(k).end - s.start }),
     };
   });
+
+  // sound-effect cues in absolute seconds: scene SFX functions plus an automatic whoosh on every transition
+  window.collectCues = () => {
+    const cues = [];
+    const auto = !(TL.audio && TL.audio.transitionSfx === false);
+    SCENE_LIST.forEach((S, i) => {
+      if (auto && i > 0 && S.transition !== 'cut') cues.push({ at: S.start, sound: S.transition === 'glitch' ? 'glitch' : 'whoosh', volume: 0.7 });
+      if (sfx[S.id]) for (const c of sfx[S.id](S)) {
+        if (!c.sound || !Number.isFinite(c.at)) throw new Error(`SFX for scene "${S.id}" must return [{ at, sound }]`);
+        cues.push({ ...c, at: S.start + c.at });
+      }
+    });
+    return cues.sort((a, b) => a.at - b.at);
+  };
 
   const unknown = Object.keys(scenes).filter((id) => !TL.scenes.some((s) => s.id === id));
   if (unknown.length) console.warn(`scenes.js defines scenes not in script.json: ${unknown.join(', ')}`);
 
   if (params.has('export')) document.body.classList.add('export');
   const audio = document.getElementById('voice');
+  // the full mix (voice + music + sfx) is written by scripts/mix.mjs; before that exists, preview the bare voice
+  audio.src = 'audio.wav';
+  audio.onerror = () => { if (!audio.src.endsWith('voice.wav')) audio.src = 'voice.wav'; };
   const seek = document.getElementById('seek');
   const playBtn = document.getElementById('play');
   const timeLbl = document.getElementById('time');
@@ -591,5 +725,7 @@ function boot({ scenes, cams = {} }) {
   window.renderFrame = (t) => render(t);
   const fontLoads = [];
   for (const s of Object.values(STYLES)) for (const f of [s.fonts.body, s.fonts.title]) for (const wgt of [400, 700]) fontLoads.push(document.fonts.load(`${wgt} 40px ${f}`));
+  // web fonts split by unicode-range load lazily; force every declared face so the first frames never use a fallback
+  for (const f of document.fonts) fontLoads.push(f.load());
   window.ready = Promise.all(fontLoads).then(() => show(cur));
 }

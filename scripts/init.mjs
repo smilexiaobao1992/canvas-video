@@ -17,21 +17,36 @@ const target = resolve(dir);
 function copyEngine() {
   cpSync(join(SKILL, 'engine'), join(target, 'engine'), { recursive: true });
   mkdirSync(join(target, 'scripts'), { recursive: true });
-  for (const f of ['tts.mjs', 'export.mjs', 'snap.mjs']) copyFileSync(join(SKILL, 'scripts', f), join(target, 'scripts', f));
+  for (const f of PROJECT_SCRIPTS) copyFileSync(join(SKILL, 'scripts', f), join(target, 'scripts', f));
+}
+const PROJECT_SCRIPTS = ['lib.mjs', 'tts.mjs', 'edge_words.py', 'audio.mjs', 'mix.mjs', 'snap.mjs', 'export.mjs'];
+const IS_WIN = process.platform === 'win32';
+const PY = IS_WIN ? 'python' : 'python3';
+const PIP = IS_WIN ? '.venv\\Scripts\\pip' : '.venv/bin/pip';
+const NPM_DEPS = 'puppeteer-core lxgw-wenkai-webfont';
+
+// bring an older project's index.html up to the current template (single loader, web font, sized canvas)
+function migrateHtml() {
+  const path = join(target, 'index.html');
+  let html = readFileSync(path, 'utf8');
+  const tpl = readFileSync(join(SKILL, 'templates', 'index.html'), 'utf8');
+  if (!html.includes('engine/load.js')) {
+    html = html
+      .replace(/^[ \t]*<script src="engine\/[^"]+"><\/script>\n/gm, '')
+      .replace(/(<script src="timeline\.js"><\/script>\n)/, '$1<script src="engine/load.js"></script>\n');
+  }
+  html = html.replace(/<style>[\s\S]*?<\/style>/, tpl.match(/<style>[\s\S]*?<\/style>/)[0]);
+  if (!html.includes('lxgw-wenkai-webfont')) html = html.replace(/(<\/title>\n)/, `$1${tpl.match(/<!-- bundled[\s\S]*?bold\.css">\n/)[0]}`);
+  html = html.replace(/<canvas id="c"[^>]*>/, '<canvas id="c">').replace(/<audio id="voice"[^>]*>/, '<audio id="voice" preload="auto">');
+  writeFileSync(path, html);
 }
 
 if (flag('update-engine')) {
   if (!existsSync(join(target, 'index.html'))) { console.error(`${target} is not a canvas-video project`); process.exit(1); }
   copyEngine();
-  // older projects listed engine files one by one; switch them to the single loader
-  const html = readFileSync(join(target, 'index.html'), 'utf8');
-  if (!html.includes('engine/load.js')) {
-    const next = html
-      .replace(/^[ \t]*<script src="engine\/[^"]+"><\/script>\n/gm, '')
-      .replace(/(<script src="timeline\.js"><\/script>\n)/, '$1<script src="engine/load.js"></script>\n');
-    writeFileSync(join(target, 'index.html'), next);
-  }
-  console.log(`engine/ and scripts/ refreshed in ${target}`);
+  migrateHtml();
+  if (!existsSync(join(target, 'node_modules/lxgw-wenkai-webfont')) && !flag('no-install')) execSync(`npm install --silent ${NPM_DEPS}`, { cwd: target, stdio: 'inherit' });
+  console.log(`engine/ and scripts/ refreshed in ${target} — rerun scripts/tts.mjs so timeline.js picks up new fields`);
   process.exit(0);
 }
 
@@ -50,8 +65,8 @@ if (example) {
 
 if (!flag('no-install')) {
   const run = (cmd) => { console.log(`$ ${cmd}`); execSync(cmd, { cwd: target, stdio: 'inherit' }); };
-  run('npm install --silent puppeteer-core');
-  run('python3 -m venv .venv');
-  run('.venv/bin/pip install -q edge-tts');
+  run(`npm install --silent ${NPM_DEPS}`);
+  run(`${PY} -m venv .venv`);
+  run(`${PIP} install -q edge-tts`);
 }
 console.log(`\ncanvas-video project ready: ${target}\nnext: cd ${dir} && node scripts/tts.mjs && node scripts/snap.mjs`);

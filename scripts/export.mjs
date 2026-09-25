@@ -1,35 +1,27 @@
 // Export: N headless Chrome instances each render a contiguous range of frames and encode it in the page with
 // WebCodecs (H.264, hardware encoder when available). The Annex B segments are byte-concatenated (each starts
-// on a keyframe) and muxed with voice.wav. Rendering is a pure function of t, so ranges are independent.
+// on a keyframe) and muxed with the final audio mix. Rendering is a pure function of t, so ranges are independent.
 // Usage: node scripts/export.mjs [--style <name>] [--cast host=cat,student=person] [--out file.mp4]
 //                                [--workers N] [--bitrate <Mbps>] [--draft]
-import puppeteer from 'puppeteer-core';
 import { execFileSync } from 'node:child_process';
-import { createWriteStream, mkdirSync, readFileSync, rmSync, openSync, writeSync, closeSync } from 'node:fs';
+import { createWriteStream, mkdirSync, readFileSync, rmSync, openSync, writeSync, closeSync, copyFileSync } from 'node:fs';
 import { cpus } from 'node:os';
-import { pathToFileURL } from 'node:url';
-import { resolve } from 'node:path';
+import { launchBrowser, openPage, readTimeline, argOpt } from './lib.mjs';
+import { mixAudio } from './audio.mjs';
 
 const argv = process.argv.slice(2);
-const opt = (name) => { const i = argv.indexOf(`--${name}`); return i >= 0 ? argv[i + 1] : null; };
 const draft = argv.includes('--draft');
-const style = opt('style');
-const cast = opt('cast');
-const OUT = opt('out') || `out${style ? `-${style}` : ''}${draft ? '-draft' : ''}.mp4`;
-const CHROME = process.env.CHROME_PATH || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+const style = argOpt(argv, 'style');
+const cast = argOpt(argv, 'cast');
+const OUT = argOpt(argv, 'out') || `out${style ? `-${style}` : ''}${draft ? '-draft' : ''}.mp4`;
 
-const tlSrc = readFileSync('timeline.js', 'utf8');
-const TL = JSON.parse(tlSrc.slice(tlSrc.indexOf('{'), tlSrc.lastIndexOf('}') + 1));
+const TL = readTimeline();
+const W = TL.width || 1920, H = TL.height || 1080;
 const fps = draft ? 15 : TL.fps;
 const total = Math.ceil(TL.duration * fps);
-const bitrate = Number(opt('bitrate') ?? (draft ? 4 : 20)) * 1e6;
+const bitrate = Number(argOpt(argv, 'bitrate') ?? (draft ? 4 : 20)) * 1e6;
 // at least ~2s of frames per worker; more instances than that only adds startup cost
-const workers = Math.max(1, Math.min(Number(opt('workers') ?? Math.min(6, cpus().length - 2)), Math.ceil(total / (fps * 2))));
-
-const url = new URL(pathToFileURL(resolve('index.html')).href);
-url.searchParams.set('export', '1');
-if (style) url.searchParams.set('style', style);
-if (cast) url.searchParams.set('cast', cast.replaceAll('=', ':'));
+const workers = Math.max(1, Math.min(Number(argOpt(argv, 'workers') ?? Math.min(6, cpus().length - 2)), Math.ceil(total / (fps * 2))));
 
 const SEG_DIR = 'build/export';
 rmSync(SEG_DIR, { recursive: true, force: true });
@@ -40,8 +32,8 @@ const started = Date.now();
 const progress = () => process.stdout.write(`\r${done.reduce((a, b) => a + b, 0)}/${total} frames  ${workers} workers  ${((Date.now() - started) / 1000).toFixed(0)}s`);
 
 // runs inside the page: render frames [a, b) and stream encoded chunks out through window.__chunk
-async function encodeRange({ a, b, fps, bitrate, keyEvery }) {
-  const cfg = { codec: 'avc1.640028', width: 1920, height: 1080, bitrate, bitrateMode: 'variable', framerate: fps, avc: { format: 'annexb' }, hardwareAcceleration: 'prefer-hardware' };
+async function encodeRange({ a, b, fps, bitrate, keyEvery, W, H }) {
+  const cfg = { codec: 'avc1.640028', width: W, height: H, bitrate, bitrateMode: 'variable', framerate: fps, avc: { format: 'annexb' }, hardwareAcceleration: 'prefer-hardware' };
   if (!(await VideoEncoder.isConfigSupported(cfg)).supported) {
     cfg.hardwareAcceleration = 'no-preference';
     if (!(await VideoEncoder.isConfigSupported(cfg)).supported) throw new Error('this Chrome cannot encode H.264 with WebCodecs');
@@ -78,21 +70,18 @@ async function encodeRange({ a, b, fps, bitrate, keyEvery }) {
   return { renderMs };
 }
 
+let cues = [];
 async function worker(k, [a, b]) {
-  const browser = await puppeteer.launch({ executablePath: CHROME, headless: true, args: ['--allow-file-access-from-files'] });
+  const browser = await launchBrowser();
   try {
-    const page = await browser.newPage();
-    await page.setViewport({ width: 1920, height: 1080, deviceScaleFactor: 1 });
-    let pageError = null;
-    page.on('pageerror', (e) => { pageError = e; });
     const out = createWriteStream(`${SEG_DIR}/seg-${String(k).padStart(2, '0')}.h264`);
+    const { page, errors } = await openPage(browser, { style, cast });
     await page.exposeFunction('__chunk', (b64) => { out.write(Buffer.from(b64, 'base64')); });
     await page.exposeFunction('__progress', (n) => { done[k] = n; progress(); });
-    await page.goto(url.href);
-    await page.evaluate(() => window.ready);
-    if (pageError) throw pageError;
-    const stats = await page.evaluate(encodeRange, { a, b, fps, bitrate, keyEvery: fps * 2 });
-    if (pageError) throw pageError;
+    if (errors.length) throw new Error(errors.join('\n'));
+    if (k === 0) cues = await page.evaluate(() => window.collectCues());
+    const stats = await page.evaluate(encodeRange, { a, b, fps, bitrate, keyEvery: fps * 2, W, H });
+    if (errors.length) throw new Error(errors.join('\n'));
     await new Promise((r) => out.end(r));
     done[k] = b - a; progress();
     return stats;
@@ -110,6 +99,10 @@ try {
 }
 const encodedAt = Date.now();
 
+// final audio: voice + ducked music + sfx; also refresh audio.wav so the preview page plays the same mix
+mixAudio({ duration: TL.duration, cfg: TL.audio || {}, cues, out: `${SEG_DIR}/audio.wav` });
+if (!style && !cast) copyFileSync(`${SEG_DIR}/audio.wav`, 'audio.wav');
+
 // Annex B streams concatenate byte-for-byte when every segment starts with a keyframe
 const joined = `${SEG_DIR}/all.h264`;
 const fd = openSync(joined, 'w');
@@ -118,8 +111,8 @@ closeSync(fd);
 execFileSync('ffmpeg', [
   '-v', 'error', '-y',
   '-fflags', '+genpts', '-r', String(fps), '-f', 'h264', '-i', joined,
-  '-i', 'voice.wav',
-  '-map', '0:v', '-map', '1:a', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '160k', '-movflags', '+faststart',
+  '-i', `${SEG_DIR}/audio.wav`,
+  '-map', '0:v', '-map', '1:a', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart',
   OUT,
 ]);
 rmSync(SEG_DIR, { recursive: true, force: true });
@@ -127,5 +120,5 @@ rmSync(SEG_DIR, { recursive: true, force: true });
 const wall = (Date.now() - started) / 1000;
 const renderAvg = stats.reduce((s, x) => s + x.renderMs, 0) / total;
 console.log(`\ndone -> ${OUT}`);
-console.log(`  ${TL.duration}s video, ${total} frames @ ${fps}fps, ${workers} workers, ${(bitrate / 1e6).toFixed(0)} Mbps${draft ? ' (draft)' : ''}`);
-console.log(`  wall ${wall.toFixed(1)}s = ${(total / wall).toFixed(0)} fps (${(TL.duration / wall).toFixed(1)}x realtime); render JS ~${renderAvg.toFixed(1)} ms/frame; mux ${((Date.now() - encodedAt) / 1000).toFixed(1)}s`);
+console.log(`  ${TL.duration}s ${W}x${H} video, ${total} frames @ ${fps}fps, ${workers} workers, ${(bitrate / 1e6).toFixed(0)} Mbps${draft ? ' (draft)' : ''}, ${cues.length} sfx cues`);
+console.log(`  wall ${wall.toFixed(1)}s = ${(total / wall).toFixed(0)} fps (${(TL.duration / wall).toFixed(1)}x realtime); render JS ~${renderAvg.toFixed(1)} ms/frame; audio+mux ${((Date.now() - encodedAt) / 1000).toFixed(1)}s`);

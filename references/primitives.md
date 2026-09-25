@@ -1,11 +1,16 @@
 # 引擎 API（engine/core.js、characters.js、iso.js）
 
+动效见 `motion.md`，组件见 `components.md`，声音见 `audio.md`。
+
 所有函数都是全局的，画到当前的 `ctx` 上。颜色用当前风格的调色板 `C`。
 
 ## 全局变量
 | 名称 | 说明 |
 |---|---|
-| `W`, `H` | 1920, 1080 |
+| `W`, `H` | 画布尺寸，由 script.json 的 `format` 决定：1920×1080、1080×1920 或 1080×1080 |
+| `SAFE` | `{x0, y0, x1, y1}`：重要内容的安全区，已经避开标题、字幕，以及竖屏平台的界面 |
+| `ASPECT` | `'wide'`（横屏）、`'tall'`（竖屏）或 `'square'`（方屏），用来按比例切换布局 |
+| `LAYOUT` | 标题、章节小圆环、角标、字幕的位置参数（一般不用直接改） |
 | `ctx` | 当前的 2D 绘图上下文（转场时引擎可能把它临时换成离屏画布，所以别缓存它） |
 | `C` | 当前调色板，语义角色见下 |
 | `STYLE` | 当前风格对象（`STYLE.dark`、`STYLE.shadow`、`STYLE.line`…） |
@@ -81,6 +86,9 @@
 | `drawRole(role, x, y, s, t, { mood, look, walk, wave, point, talk, alpha, seed, options })` | 画当前场景 cast 里扮演 role 的形象。(x, y) 是脚底；s=1 时约 300px 高 |
 | `drawCharacter(name, x, y, s, t, opts)` | 不经过 cast，直接画某个形象 |
 | `S.speaking(lt)` | 本场景有旁白正在念时返回 true，传给 `talk` 就能让嘴动起来 |
+| `S.word(i, str, nth=0)` / `S.wordEnd(i, str, nth=0)` | 第 i 句里 str 开始 / 结束说的时刻（相对场景），用配音返回的逐词时间戳算出来；找不到会报错并打印整句文本 |
+| `S.words(i)` | 第 i 句的词列表 `[{ text, s, e }]` |
+| `S.transition` / `S.tdur` | 进入本场景用的转场和时长 |
 | `registerCharacter(name, def)` | 注册新形象，见 `characters.md` |
 
 ## 等轴测（engine/iso.js）
@@ -98,6 +106,11 @@
 
 遮挡关系：把要画的对象收集成 `{ depth: x + y（取中心）, draw }`，按 depth 从小到大画。参考 `examples/iso-city/scenes.js` 里的 `drawSorted`。
 
+## 文字排版
+| 函数 | 说明 |
+|---|---|
+| `wrapText(str, size, maxW)` | 按宽度折行：按中文词语断行（Intl.Segmenter），优先在标点处断开，各行宽度尽量均衡，返回行数组 |
+
 ## 背景辅助（写风格时用）
 - `bgGuides(b, color)`：淡淡的辅助圆、虚线参考线、十字标记
 - `bgDust(b, rgb, rand, n, maxAlpha, size)`：随机撒点，用来做纸纤维、粉笔灰、星空
@@ -108,4 +121,5 @@
 - 场景切换时按新场景风格的 `transition` 转场，时长 0.6 秒；上一幕停在最后一帧。
 - 第一幕开头淡入 0.4 秒，最后一幕结尾淡出 1 秒。
 - 没有定义 CAMS 的场景，默认 3.5% 缓慢推近。
-- 每帧绘制顺序：背景 → 镜头内的场景内容 → 风格叠加层 → 颗粒 → 暗角 → 角标 → 章节小圆环 → 字幕。
+- 每帧绘制顺序：背景 → 镜头内的场景内容 → 风格叠加层 → 像素化 → 颗粒 → 暗角 → 角标 → 章节小圆环 → 字幕。
+- 字幕自动折行（横屏最多 2 行，竖屏最多 3 行，放不下就缩小字号）；`subtitles.highlight` 开启后，按逐词时间把念过的字加深。

@@ -2,7 +2,7 @@
  * One world unit = o.s pixels; o = { ox, oy, s } places the world origin on screen.
  * Occlusion is painter's order: draw objects sorted by (x + y) ascending, lower z first.
  */
-const ISO = { ox: 960, oy: 380, s: 64 };
+const ISO = { ox: W / 2, oy: H * 0.35, s: 64 };
 const COS30 = Math.cos(Math.PI / 6);
 
 function isoPt(x, y, z = 0, o = ISO) {

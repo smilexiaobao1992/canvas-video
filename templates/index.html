@@ -3,21 +3,24 @@
 <head>
 <meta charset="utf-8">
 <title>canvas-video preview</title>
+<!-- bundled LXGW WenKai web font (installed by init.mjs) so every machine renders the same glyphs -->
+<link rel="stylesheet" href="node_modules/lxgw-wenkai-webfont/lxgwwenkai-regular.css">
+<link rel="stylesheet" href="node_modules/lxgw-wenkai-webfont/lxgwwenkai-bold.css">
 <style>
   html, body { margin: 0; background: #1e1a16; color: #eee; font-family: system-ui, sans-serif; }
   #wrap { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 12px; }
-  canvas { width: min(96vw, calc((100vh - 90px) * 16 / 9)); height: auto; box-shadow: 0 4px 30px #0006; }
-  #ui { display: flex; gap: 12px; align-items: center; width: min(96vw, calc((100vh - 90px) * 16 / 9)); font-size: 14px; }
+  canvas { max-width: 96vw; max-height: calc(100vh - 90px); width: auto; height: auto; box-shadow: 0 4px 30px #0006; }
+  #ui { display: flex; gap: 12px; align-items: center; width: min(96vw, 1200px); font-size: 14px; }
   #ui input { flex: 1; }
   #ui button { width: 48px; }
   body.export #ui { display: none; }
   body.export #wrap { padding: 0; }
-  body.export canvas { width: 1920px; height: 1080px; box-shadow: none; }
+  body.export canvas { max-width: none; max-height: none; box-shadow: none; }
 </style>
 </head>
 <body>
 <div id="wrap">
-  <canvas id="c" width="1920" height="1080"></canvas>
+  <canvas id="c"></canvas>
   <div id="ui">
     <button id="play">▶</button>
     <input id="seek" type="range" min="0" step="0.0333" value="0">
@@ -26,12 +29,12 @@
     <select id="style"></select>
   </div>
 </div>
-<audio id="voice" src="voice.wav" preload="auto"></audio>
-<!-- order matters: timeline -> engine + built-in styles -> custom styles -> content -->
+<audio id="voice" preload="auto"></audio>
+<!-- order matters: timeline -> engine + built-ins -> custom styles/characters -> content -->
 <script src="timeline.js"></script>
 <script src="engine/load.js"></script>
-<!-- custom styles: add <script src="styles/my-style.js"></script> here -->
+<!-- custom styles / characters: add <script src="styles/my-style.js"></script> here -->
 <script src="scenes.js"></script>
-<script>boot({ scenes: SCENES, cams: typeof CAMS === 'undefined' ? {} : CAMS });</script>
+<script>boot();</script>
 </body>
 </html>

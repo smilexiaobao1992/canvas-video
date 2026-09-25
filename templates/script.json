@@ -2,11 +2,20 @@
   "voice": "zh-CN-YunxiNeural",
   "rate": "+8%",
   "fps": 30,
+  "format": "16:9",
   "style": "paper",
   "brand": null,
   "hud": true,
   "cast": {
     "host": "bot"
+  },
+  "subtitles": {
+    "highlight": true
+  },
+  "audio": {
+    "music": "calm",
+    "musicVolume": 0.16,
+    "sfx": true
   },
   "scenes": [
     {
@@ -28,7 +37,8 @@
       "lines": [
         "给它一个时间 t，",
         "它就画出这一刻的画面。"
-      ]
+      ],
+      "transition": "iris"
     }
   ]
 }
