@@ -29,7 +29,7 @@ node <skill>/scripts/init.mjs my-video               # 竖屏加 --format 9:16
 #    skill 升级后，更新已有项目：node <skill>/scripts/init.mjs my-video --update-engine
 cd my-video
 
-# 2. 写 script.json（口播稿、画面比例、风格、角色、音频）和 scenes.js（画面）
+# 2. 写 script.json（口播稿、画面比例、风格、角色、音频）和 scenes.js（画面）；模板里的 mine 风格只是占位，按内容改写或换掉
 
 # 3. 生成时间轴。写画面阶段先用 --dry：离线估算时长和逐词时间，生成静音音轨，速度快
 node scripts/tts.mjs --dry
@@ -59,7 +59,7 @@ node scripts/export.mjs --draft             # 15fps 草稿，最快
 {
   "voice": "zh-CN-YunxiNeural", "rate": "+8%", "fps": 30,
   "format": "16:9",
-  "style": "paper", "brand": null, "hud": true,
+  "style": "mine", "brand": null, "hud": true,
   "cast": { "host": "bot", "student": { "character": "person", "options": { "hair": "long" } } },
   "subtitles": { "highlight": true },
   "audio": { "music": "calm", "musicVolume": 0.16, "sfx": true, "sfxVolume": 0.35 },
@@ -136,6 +136,8 @@ const SFX = { intro: (S) => [{ at: S.word(0, '智能体'), sound: 'pop' }] };   
 场景里只写角色名，比如 `drawRole('host', …)`，谁来演由 `cast` 决定。内置形象有 `bot`（机器人）、`person`（人物：发型、眼镜、各部位颜色都能改）、`cat`（小猫），都支持表情、眼神、走路、挥手、指向、说话。想要新形象，写 `characters/<name>.js` 调用 `registerCharacter`，见 `references/characters.md`。
 
 ## 风格
+
+背景和风格按视频内容来定：先想这个题材发生在哪里（厨房、太空、教室、机房……），直接在场景里把这个环境画出来，或者在 `scenes.js` 顶部用 `registerStyle` 写一个这部片子自己的风格（模板里的 `mine` 就是占位，改掉它）。下面的内置风格适合题材正好对得上、或者想快速换风格对比的时候用，不要当成默认值。
 
 | 风格 | 感觉 | 默认转场 |
 |---|---|---|

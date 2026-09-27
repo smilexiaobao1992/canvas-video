@@ -122,7 +122,7 @@ node $SKILL/scripts/init.mjs my-video --update-engine
 一个视频项目只有两个文件需要自己写：
 
 - `script.json`：口播稿（按场景分句）、声音、风格、角标文字
-- `scenes.js`：每个场景一个函数 `(lt, S, t) => void`，用引擎提供的绘图函数和语义颜色（`C.ok`、`C.bad`、`C.mark`…）来画
+- `scenes.js`：每个场景一个函数 `(lt, S, t) => void`，用引擎提供的绘图函数和语义颜色（`C.ok`、`C.bad`、`C.mark`…）来画。背景和风格按内容来：可以直接在场景里画环境，也可以在文件顶部用 `registerStyle` 写这部片子自己的风格（模板里的 `mine` 是占位）
 
 ## 仓库结构
 

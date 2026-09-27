@@ -8,6 +8,21 @@
  * Draw with engine primitives, motion helpers and components; colors are semantic (C.ink, C.ok, C.bad, C.note, C.mark ...).
  * Everything must be a pure function of time: no state carried between frames.
  */
+
+// This film's own look: a deliberately plain placeholder. Rewrite the palette and background for what the video is
+// about (a kitchen, deep space, a classroom...), or set "style" in script.json to a built-in style that fits.
+registerStyle('mine', {
+  palette: {
+    bg: '#f4f5f8', surface: '#ffffff', surfaceAlt: '#e9edf6', ink: '#1d2230', sub: '#5d6577', muted: '#b6bccb',
+    neutral: '#e3e7ef', ok: '#2fa36b', okDeep: '#1f7a4f', bad: '#e0524d', note: '#3f6fd8', mark: '#ffc93c', onMark: '#1d2230',
+  },
+  fonts: { body: '"PingFang SC", sans-serif' },
+  line: { wobble: 0, mode: 'clean' },
+  shadow: 'soft',
+  texture: { grain: 6, vignette: null },
+  transition: 'fade',
+  background(b, w, h, P) { b.fillStyle = P.bg; b.fillRect(0, 0, w, h); },
+});
 const SCENES = {
   hello(lt, S, t) {
     const l0 = S.L(0), l1 = S.L(1);
