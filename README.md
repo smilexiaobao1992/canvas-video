@@ -10,11 +10,12 @@
 - 动效库和组件库：弹簧、粒子聚字、形状变形、乱码解码、震屏；图表、代码块、终端、AI 对话界面、流程图、图标
 - 生成式效果（参考 p5.js 示例，改写成纯函数）：粒子神经网络、Perlin 噪声流场、粒子发射器（烟、火花、雪、雨、气泡、数据喷发）、鸟群、递归生长树、轻量 3D 点云、物理轨迹（梯度下降小球、弹跳）
 - 插画画法：粗描边、平涂、排线纹理，能画任何主体（另附圆环隧道、星系、双螺旋等几个示范）
-- 声音：配音带逐词时间戳，画面和音效可以卡在具体的词上；背景音乐和音效都用代码合成，有人声时音乐自动压低；字幕逐字高亮
+- 声音：配音带逐词时间戳，画面和音效可以卡在具体的词上；背景音乐（包括一套古琴古筝配乐）和音效都用代码合成，有人声时音乐自动压低；字幕逐字高亮
 - 角色可替换、可自定义：内置机器人、人物、小猫，场景里只写角色名，由 `cast` 决定谁来演
 - 背景有层次：风格自带缓慢流动的环境层（光斑、雾、云、浮尘），每一幕可以换不同的氛围（神经网络、流场、光点、聚光、太空、日落、黄昏、黎明……），镜头推近时各层有视差
 - 带镜头运动、转场（包括钻进某个物体的 portal）、字幕、章节进度提示
-- 导出很快：多个 Chrome 并行渲染，浏览器内硬件编码，63 秒的视频约 13 秒导完
+- 导出很快：多个 Chrome 并行渲染，浏览器内硬件编码，63 秒的视频约 13 秒导完；导出后自动检查成片的音视频流、时长和响度
+- 支持多集系列：后面几集共用第一集的依赖、绘图库和设置
 
 ## 风格
 
@@ -101,13 +102,14 @@ node $SKILL/scripts/init.mjs my-video --example components
 cd my-video
 
 node scripts/tts.mjs --dry     # 离线估算时长，先调画面
-node scripts/snap.mjs          # 每个场景截一张图，拼成 snaps/sheet.png
+node scripts/snap.mjs          # 每个场景截一张图，拼成 snaps/sheet.png（帧多时分页），并把每个场景跑一遍查错
 node scripts/tts.mjs           # 生成真实配音（带逐词时间戳）
 node scripts/mix.mjs           # 混合人声、音乐和音效，生成 audio.wav，供预览页播放
 node scripts/export.mjs        # 导出 out.mp4
 node scripts/export.mjs --style ink   # 整片换成水墨风格，导出 out-ink.mp4
 node scripts/export.mjs --cast host=person   # 主持人换成人物
 node scripts/export.mjs --draft       # 草稿：15fps 低码率，几秒出片
+node scripts/export.mjs --storyboard  # 另外出一张分镜图
 ```
 
 预览：用浏览器打开 `index.html`，可以播放、拖动，还能从下拉框切换风格。
@@ -115,6 +117,11 @@ node scripts/export.mjs --draft       # 草稿：15fps 低码率，几秒出片
 skill 升级后，更新已有项目的引擎：
 ```bash
 node $SKILL/scripts/init.mjs my-video --update-engine
+```
+
+做系列片时，第二集起共用第一集的依赖、设置和自己写的绘图库：
+```bash
+node $SKILL/scripts/init.mjs ep2 --episode-of ep1
 ```
 
 ## 项目结构
@@ -140,13 +147,13 @@ engine/
   illustrate.js          插画画法 inkShape 和几个示范主体
   styles/*.js            10 个风格包
 scripts/
-  init.mjs               新建项目 / 更新引擎
-  lib.mjs                公共函数：查找 Chrome、启动浏览器、读取时间轴
+  init.mjs               新建项目 / 更新引擎 / 新建系列片的下一集
+  lib.mjs                公共函数：查找 Chrome、启动和关闭浏览器、读取时间轴
   tts.mjs, edge_words.py 配音 + 逐词时间戳 + 时间轴（支持 --dry）
   audio.mjs, mix.mjs     代码合成音乐和音效，负责混音
-  snap.mjs               截图拼成总览图，页面报错时失败退出
-  export.mjs             并行渲染 + WebCodecs 编码导出 mp4（--style / --cast / --draft / --workers）
-  selftest.mjs           引擎自检：所有示例 + 竖屏模板，覆盖所有风格和形象，加基准图对比、混音和导出
+  snap.mjs               截图拼成总览图（自动分页、清掉旧图），整片扫一遍查场景报错，做纯函数检查
+  export.mjs             并行渲染 + WebCodecs 编码导出 mp4（--style / --cast / --draft / --workers / --storyboard），导出后自查成片
+  selftest.mjs           引擎自检：所有示例 + 竖屏模板，覆盖所有风格和形象，加基准图对比、混音和导出，再跑通一集系列片
 tests/golden/            基准图（webp 缩略图）
 templates/               新项目模板
 examples/

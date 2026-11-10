@@ -682,7 +682,7 @@ function boot({ scenes, cams, sfx } = {}) {
   SCENE_FNS = scenes; CAM_FNS = cams;
   SCENE_LIST = TL.scenes.map((s, i) => {
     const lines = TL.lines.filter((l) => l.scene === s.id);
-    const style = forced || s.style || TL.style || 'paper';
+    const style = forced || s.style || TL.style || 'minimal';
     if (!STYLES[style]) throw new Error(`scene "${s.id}" uses unknown style "${style}"; available: ${Object.keys(STYLES).join(', ')}`);
     if (!scenes[s.id]) throw new Error(`scenes.js has no function for scene "${s.id}"`);
     const cast = resolveCast({ ...(TL.cast || {}), ...(s.cast || {}) }, castOverride, s.id);

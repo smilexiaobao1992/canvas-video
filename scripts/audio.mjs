@@ -38,9 +38,12 @@ const PRESETS = {
   deep:   { bpm: 64, root: 57, chords: [[0, 3, 7], [8, 12, 15], [3, 7, 10], [10, 14, 17]], arp: 1, arpOct: 12, hats: false, bright: 0.12 },
 };
 
+export const MUSIC_NAMES = [...Object.keys(PRESETS), 'guqin'];
+
 export function synthMusic(preset, seconds, path) {
+  if (preset === 'guqin') return synthGuqin(seconds, path);
   const P = PRESETS[preset];
-  if (!P) throw new Error(`unknown music preset "${preset}"; available: ${Object.keys(PRESETS).join(', ')}`);
+  if (!P) throw new Error(`unknown music preset "${preset}"; available: ${MUSIC_NAMES.join(', ')}`);
   const n = Math.ceil((seconds + 1) * SR), L = new Float32Array(n), R = new Float32Array(n);
   const beat = 60 / P.bpm, bar = beat * 4, chordLen = bar * 2, r = rng(11);
   const chordAt = (t) => P.chords[Math.floor(t / chordLen) % P.chords.length];
@@ -93,6 +96,82 @@ export function synthMusic(preset, seconds, path) {
   // fade in 2s, fade out 3s
   for (let i = 0; i < n; i++) { const t = i / SR, g = Math.min(1, t / 2) * Math.min(1, Math.max(0, (seconds - t) / 3)); L[i] *= g; R[i] *= g; }
   writeWav(path, L, R);
+}
+
+// guqin: a bed for history / classical-China topics. Low guqin-like plucks and a guzheng-like melody
+// (Karplus-Strong strings) wandering the A yu pentatonic mode (A C D E G), over an open-fifth drone with
+// sparse tanggu drum hits and a small reverb. No chords, no steady pulse.
+function synthGuqin(seconds, path) {
+  const n = Math.ceil((seconds + 4) * SR), L = new Float32Array(n), R = new Float32Array(n), r = rng(3);
+  const SCALE = [];
+  for (const o of [33, 45, 57, 69, 81]) for (const d of [0, 3, 5, 7, 10]) SCALE.push(o + d);
+  // plucked string; `glide` bends the pitch by that many semitones shortly after the attack (hua yin)
+  const pluck = (t0, midi, { amp = 0.3, decay = 0.996, bright = 0.5, pan = 0, glide = 0, len = 4 } = {}) => {
+    const f0 = hz(midi), i0 = Math.floor(t0 * SR), N = Math.min(n - i0, Math.floor(len * SR));
+    if (N <= 0) return;
+    const size = Math.ceil(SR / hz(midi - 2)) + 2, buf = new Float32Array(size), half = SR / f0 / 2;
+    for (let i = 0; i < size; i++) buf[i] = (r() * 2 - 1) * (1 - bright * 0.5) + (i < half ? bright : -bright) * 0.5;
+    let w = 0, last = 0;
+    for (let i = 0; i < N; i++) {
+      const bend = glide ? glide * Math.min(1, Math.max(0, (i / SR - 0.25) / 0.6)) : 0;
+      const p = Math.min(size - 2, SR / (f0 * Math.pow(2, bend / 12)));
+      const rd = (w - p + size * 4) % size, k = Math.floor(rd), fr = rd - k;
+      const y = buf[k % size] * (1 - fr) + buf[(k + 1) % size] * fr;
+      const v = decay * (0.5 * y + 0.5 * last);
+      last = y;
+      buf[w] = v; w = (w + 1) % size;
+      const s = v * amp * Math.min(1, i / 40);
+      L[i0 + i] += s * (1 - pan); R[i0 + i] += s * (1 + pan);
+    }
+  };
+  // low drum: a sine dropping in pitch plus a muffled noise thud
+  const drum = (t0, amp) => {
+    const i0 = Math.floor(t0 * SR), N = Math.min(n - i0, Math.floor(1.6 * SR));
+    let ph = 0, lp = 0;
+    for (let i = 0; i < N; i++) {
+      const t = i / SR;
+      ph += (TAU * (48 + 60 * Math.exp(-t * 18))) / SR;
+      lp += 0.04 * ((r() * 2 - 1) - lp);
+      const s = (Math.sin(ph) * Math.exp(-t * 3.2) + lp * 1.6 * Math.exp(-t * 14)) * amp;
+      L[i0 + i] += s; R[i0 + i] += s;
+    }
+  };
+  // drone: A2 + E3, slowly swelling
+  for (let i = 0; i < n; i++) {
+    const t = i / SR;
+    const v = (Math.sin(TAU * hz(45) * t) + 0.6 * Math.sin(TAU * hz(52) * t + 1) + 0.25 * Math.sin(TAU * hz(57) * t * 1.002)) * 0.022 * (0.6 + 0.4 * Math.sin(t * 0.21)) * Math.min(1, t / 3);
+    L[i] += v; R[i] += v;
+  }
+  // 8-beat phrases at 58 bpm: a bass pluck opens each one, the melody moves by step and ends on a long note
+  const beat = 60 / 58;
+  let pos = 12;
+  for (let t = 0.8, phrase = 0; t < seconds; t += beat * 8, phrase++) {
+    pluck(t, SCALE[5 + (phrase % 3 === 2 ? 2 : 0)], { amp: 0.42, decay: 0.9975, bright: 0.2, pan: -0.2, len: 6 });
+    if (phrase % 2 === 0) drum(t, 0.55);
+    if (phrase % 4 === 3) drum(t + beat * 6, 0.35);
+    const count = 4 + Math.floor(r() * 3);
+    for (let k = 0, bt = 0; k < count && bt < 7; k++) {
+      pos = Math.max(10, Math.min(19, pos + [-2, -1, -1, 1, 1, 2][Math.floor(r() * 6)]));
+      const last = k === count - 1;
+      const glide = last && r() < 0.5 ? (r() < 0.5 ? 2 : -1) : 0;
+      pluck(t + bt * beat, SCALE[pos], { amp: 0.22, decay: last ? 0.9985 : 0.997, bright: 0.65, pan: 0.25, glide, len: last ? 5 : 3 });
+      if (r() < 0.25) pluck(t + bt * beat + 0.03, SCALE[pos] + 12, { amp: 0.07, bright: 0.8, pan: 0.4, len: 2 });
+      bt += last ? 2 : [0.5, 1, 1, 1.5][Math.floor(r() * 4)];
+    }
+  }
+  // reverb (parallel feedback combs), then fade in 1.5s and out 3s
+  const total = Math.floor(seconds * SR);
+  const reverb = (x, delays) => {
+    const y = new Float32Array(total), bufs = delays.map((d) => ({ b: new Float32Array(d), i: 0 }));
+    for (let i = 0; i < total; i++) {
+      let s = 0;
+      for (const c of bufs) { const o = c.b[c.i]; c.b[c.i] = x[i] + o * 0.8; c.i = (c.i + 1) % c.b.length; s += o; }
+      const t = i / SR;
+      y[i] = (x[i] * 0.65 + (s / bufs.length) * 0.35) * Math.min(1, t / 1.5, Math.max(0, (seconds - t) / 3));
+    }
+    return y;
+  };
+  writeWav(path, reverb(L, [1557, 1617, 1491, 1422]), reverb(R, [1277, 1356, 1188, 1116]));
 }
 
 // ---------- sound effects ----------
@@ -150,7 +229,7 @@ export function sfxFile(name, dir) {
 }
 
 // ---------- mix ----------
-// cfg = TL.audio: { music: 'calm'|'bright'|'deep'|<file>|null, musicVolume, sfx: bool, sfxVolume }
+// cfg = TL.audio: { music: 'calm'|'bright'|'deep'|'guqin'|<file>|null, musicVolume, sfx: bool, sfxVolume }
 export function mixAudio({ voice = 'voice.wav', duration, cfg = {}, cues = [], out = 'audio.wav', dir = 'build/audio' }) {
   mkdirSync(dir, { recursive: true });
   const inputs = ['-i', voice];
@@ -160,10 +239,10 @@ export function mixAudio({ voice = 'voice.wav', duration, cfg = {}, cues = [], o
   const music = cfg.music === undefined ? 'calm' : cfg.music;
   if (music) {
     let file = music;
-    if (PRESETS[music]) {
+    if (MUSIC_NAMES.includes(music)) {
       file = `${dir}/music-${music}-${duration.toFixed(2)}.v1.wav`;
       if (!existsSync(file)) synthMusic(music, duration, file);
-    } else if (!existsSync(file)) throw new Error(`music file not found: ${file} (or use a preset: ${Object.keys(PRESETS).join(', ')})`);
+    } else if (!existsSync(file)) throw new Error(`music file not found: ${file} (or use a preset: ${MUSIC_NAMES.join(', ')})`);
     inputs.push('-stream_loop', '-1', '-i', file);
     // music ducks under the voice: sidechain compression keyed by the narration
     f.push(`[${next}:a]aformat=sample_fmts=fltp:sample_rates=44100:channel_layouts=stereo,atrim=0:${duration},volume=${cfg.musicVolume ?? 0.16}[m0]`);

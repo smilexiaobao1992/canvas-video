@@ -2,15 +2,18 @@
 // WebCodecs (H.264, hardware encoder when available). The Annex B segments are byte-concatenated (each starts
 // on a keyframe) and muxed with the final audio mix. Rendering is a pure function of t, so ranges are independent.
 // Usage: node scripts/export.mjs [--style <name>] [--cast host=cat,student=person] [--out file.mp4]
-//                                [--workers N] [--bitrate <Mbps>] [--draft]
-import { execFileSync } from 'node:child_process';
+//                                [--workers N] [--bitrate <Mbps>] [--draft] [--storyboard]
+// After muxing, the file is checked (video + audio streams, duration against the timeline, loudness); a failed
+// check exits 1. --storyboard also writes <out>-storyboard.png, a grid of evenly spaced frames.
+import { execFileSync, spawnSync } from 'node:child_process';
 import { createWriteStream, mkdirSync, readFileSync, rmSync, openSync, writeSync, closeSync, copyFileSync } from 'node:fs';
 import { cpus } from 'node:os';
-import { launchBrowser, openPage, readTimeline, argOpt } from './lib.mjs';
+import { launchBrowser, openPage, closeBrowser, readTimeline, argOpt } from './lib.mjs';
 import { mixAudio } from './audio.mjs';
 
 const argv = process.argv.slice(2);
 const draft = argv.includes('--draft');
+const storyboard = argv.includes('--storyboard');
 const style = argOpt(argv, 'style');
 const cast = argOpt(argv, 'cast');
 const OUT = argOpt(argv, 'out') || `out${style ? `-${style}` : ''}${draft ? '-draft' : ''}.mp4`;
@@ -86,7 +89,7 @@ async function worker(k, [a, b]) {
     done[k] = b - a; progress();
     return stats;
   } finally {
-    await browser.close();
+    await closeBrowser(browser);
   }
 }
 
@@ -115,10 +118,31 @@ execFileSync('ffmpeg', [
   '-map', '0:v', '-map', '1:a', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart',
   OUT,
 ]);
+
+// check what was actually written, so "done" means a playable file with sound at the expected length
+const probe = (...args) => execFileSync('ffprobe', ['-v', 'error', ...args, '-of', 'csv=p=0', OUT]).toString().trim();
+const streams = probe('-show_entries', 'stream=codec_type').split(/\s+/);
+const gotDur = parseFloat(probe('-show_entries', 'format=duration'));
+const loud = spawnSync('ffmpeg', ['-nostats', '-i', `${SEG_DIR}/audio.wav`, '-af', 'ebur128=framelog=verbose', '-f', 'null', '-']).stderr.toString().match(/I:\s+(-?[\d.]+) LUFS/);
+const lufs = loud ? parseFloat(loud[1]) : NaN;
+const problems = [];
+for (const kind of ['video', 'audio']) if (!streams.includes(kind)) problems.push(`no ${kind} stream`);
+if (!(Math.abs(gotDur - TL.duration) <= 0.2)) problems.push(`file is ${gotDur}s, timeline says ${TL.duration}s`);
+
+let board = null;
+if (storyboard && !problems.length) {
+  // evenly spaced frames (taken mid-interval, so the first one is not a blank opening frame)
+  const [cols, rows, w] = W > H ? [3, 3, 480] : W < H ? [5, 2, 270] : [4, 2, 320];
+  const step = Math.max(1, Math.floor(total / (cols * rows)));
+  board = OUT.replace(/\.mp4$/i, '') + '-storyboard.png';
+  execFileSync('ffmpeg', ['-v', 'error', '-y', '-i', OUT, '-vf', `select='not(mod(n-${Math.floor(step / 2)}\\,${step}))',scale=${w}:-1,tile=${cols}x${rows}:padding=6:color=white`, '-frames:v', '1', '-fps_mode', 'vfr', board]);
+}
 rmSync(SEG_DIR, { recursive: true, force: true });
 
 const wall = (Date.now() - started) / 1000;
 const renderAvg = stats.reduce((s, x) => s + x.renderMs, 0) / total;
-console.log(`\ndone -> ${OUT}`);
+if (problems.length) { console.error(`\nexport check failed for ${OUT}: ${problems.join('; ')}`); process.exit(1); }
+console.log(`\ndone -> ${OUT}${board ? `  (+ ${board})` : ''}`);
+console.log(`  check: ${gotDur.toFixed(2)}s (timeline ${TL.duration}s), ${streams.join(' + ')}, ${Number.isNaN(lufs) ? 'loudness not measured' : `${lufs.toFixed(1)} LUFS${lufs > -60 && Math.abs(lufs + 16) > 2 ? ' (expected about -16)' : ''}`}`);
 console.log(`  ${TL.duration}s ${W}x${H} video, ${total} frames @ ${fps}fps, ${workers} workers, ${(bitrate / 1e6).toFixed(0)} Mbps${draft ? ' (draft)' : ''}, ${cues.length} sfx cues`);
 console.log(`  wall ${wall.toFixed(1)}s = ${(total / wall).toFixed(0)} fps (${(TL.duration / wall).toFixed(1)}x realtime); render JS ~${renderAvg.toFixed(1)} ms/frame; audio+mux ${((Date.now() - encodedAt) / 1000).toFixed(1)}s`);

@@ -1,6 +1,6 @@
 ---
 name: canvas-video
-description: 用纯代码（JS + Canvas2D）做讲解、科普类动画视频。一个 render(t) 函数画出每一帧；edge-tts 配音，带逐词时间戳，自动生成时间轴；自动加代码合成的背景音乐和音效；多个 Chrome 并行，用 WebCodecs 硬件编码导出 mp4。支持横屏 16:9、竖屏 9:16、方屏 1:1。内置 10 种可切换风格（paper 纸张手绘、blueprint 蓝图发光、chalk 黑板粉笔、neon 霓虹赛博、minimal 极简信息图、pixel 像素、ink 水墨、papercut 剪纸、isometric 等轴测、inked 插画描边）；插画画法（粗描边、平涂、排线，能画任何主体）；动效库（弹簧、粒子聚字、形状变形、乱码解码、震屏、彩带）；生成式效果（粒子神经网络、噪声流场、烟雾、火花、雪、数据喷发、鸟群、递归生长树、3D 点云、梯度下降小球）；组件库（图表、代码块、终端、AI 对话界面、流程图、时间轴、对比表、图标）；可替换角色（机器人、人物、小猫，或自己用代码画的）。以下情况都应使用本 skill：用户想用代码或 Canvas 画动画视频；提到“JS 绘制每一帧”“逐帧渲染”“render(t)”“程序化动画”；想做科普、讲解、知识类短视频（包括抖音、小红书竖屏）并接受扁平或手绘画风；想给现有视频换风格、换角色；或者正在修改含有 script.json + scenes.js 的 canvas-video 项目。即使用户没提 Canvas，只要想要“像 X 上那种用 JS 画出来的讲解动画”，也用本 skill。如果用户点名要用 Canvas2D 或 canvas-video，本 skill 优先于 HyperFrames 这类基于 DOM 的视频框架。
+description: 用纯代码（JS + Canvas2D）做讲解、科普类动画视频：一个 render(t) 函数画出每一帧，edge-tts 配音并按逐词时间戳对齐画面，自带代码合成的音乐和音效，多个 Chrome 并行导出 mp4，支持横屏、竖屏、方屏和多集系列。以下情况使用本 skill：用户想用代码或 Canvas 画动画视频；提到“JS 绘制每一帧”“逐帧渲染”“render(t)”“程序化动画”；想做科普、讲解、知识类短视频（包括抖音、小红书竖屏）并接受扁平、手绘或剪贴画风；想给现有视频换风格、换角色；或者正在修改含有 script.json + scenes.js 的项目。用户点名 Canvas2D 或 canvas-video 时，本 skill 优先于 HyperFrames 这类基于 DOM 的视频框架。
 ---
 
 # canvas-video：用代码画出每一帧
@@ -27,6 +27,7 @@ description: 用纯代码（JS + Canvas2D）做讲解、科普类动画视频。
 node <skill>/scripts/init.mjs my-video               # 竖屏加 --format 9:16
 #    从示例改起：--example components（组件和动效大全）| llm-reasoning（63 秒完整作品）| iso-city（等轴测）| token-journey（插画短片）
 #    skill 升级后，更新已有项目：node <skill>/scripts/init.mjs my-video --update-engine
+#    系列片的下一集：node <skill>/scripts/init.mjs ep2 --episode-of ep1（见下文“系列片”）
 cd my-video
 
 # 2. 写 script.json（口播稿、画面比例、风格、角色、音频）和 scenes.js（画面）；模板里的 mine 风格只是占位，按内容改写或换掉
@@ -34,7 +35,9 @@ cd my-video
 # 3. 生成时间轴。写画面阶段先用 --dry：离线估算时长和逐词时间，生成静音音轨，速度快
 node scripts/tts.mjs --dry
 
-# 4. 截图自查：每个场景出一张图，拼成 snaps/sheet.png；页面报错或画面不是纯函数时，退出码为 1
+# 4. 截图自查：每个场景出一张图，拼成 snaps/sheet.png（帧数多时分页：sheet-p1.png、sheet-p2.png……）
+#    同时把每个场景从头到尾跑一遍，写错的 S.word 这类只在场景后半段才触发的错误会一次全部列出来；
+#    页面报错、场景报错或画面不是纯函数时，退出码为 1。上一次的截图会自动清掉
 node scripts/snap.mjs                 # 或指定时刻：snap.mjs 3.5 12；或每个场景取多个点：--at 0.3,0.9
 
 # 5. 画面满意后，生成真实配音（按句缓存）
@@ -46,12 +49,15 @@ node scripts/export.mjs                     # → out.mp4
 node scripts/export.mjs --style chalk       # 整片换成黑板风格
 node scripts/export.mjs --cast host=cat     # 主持人换成小猫
 node scripts/export.mjs --draft             # 15fps 草稿，最快
+node scripts/export.mjs --storyboard        # 另外出一张分镜图 <输出名>-storyboard.png（均匀抽帧拼成）
 #   其他参数：--workers N（默认 min(6, 核数-2)）、--bitrate 30（Mbps，默认 20）、--out 文件名
 ```
 
+导出结束时会自查成片并打印一行 `check:`：有没有视频和音频流、时长和时间轴是否一致、响度是多少（正常约 -16 LUFS）。自查不过退出码为 1，所以看到 `done` 就不用再手动 ffprobe。
+
 预览：浏览器打开 `index.html`，可以播放、拖动、切换风格；地址后加 `?t=12.5` 跳到指定时刻，`?style=neon` 换风格，`?cast=host:cat` 换角色。
 
-**每次改完 scenes.js 都要跑 snap.mjs，并亲自看 sheet.png。** 总览图是缩小的；细节（文字挤在一起、箭头穿过文字）要打开同目录下的全尺寸 PNG（`snaps/00-<场景>@<时间>.png`）才看得清。 文字重叠、深色风格下看不清、元素被镜头裁掉、动作和台词对不上，这些只有看图才发现得了。
+**每次改完 scenes.js 都要跑 snap.mjs，并亲自看总览图（分页时每一页都看）。** 总览图是缩小的；细节（文字挤在一起、箭头穿过文字）要打开同目录下的全尺寸 PNG（如 `snaps/00-intro_3.5s.png`，序号-场景_时间）才看得清。文字重叠、深色风格下看不清、元素被镜头裁掉、动作和台词对不上，这些只有看图才发现得了。
 
 ## script.json
 
@@ -79,7 +85,7 @@ node scripts/export.mjs --draft             # 15fps 草稿，最快
 | `transitionFocus` | 转场用 `portal` 时，镜头钻进上一幕的哪个点 `[x, y]` |
 | `cast` | 把角色分配给形象，场景也可以写自己的 `cast` |
 | `subtitles.highlight` | 字幕逐字高亮：念过的字变深，没念到的字是浅色 |
-| `audio.music` | `calm`（舒缓）/ `bright`（明快）/ `deep`（深沉）/ 你自己的音乐文件路径 / `null` 不要音乐。有人声时音乐会自动压低 |
+| `audio.music` | `calm`（舒缓）/ `bright`（明快）/ `deep`（深沉）/ `guqin`（古琴古筝，历史和古风题材）/ 你自己的音乐文件路径 / `null` 不要音乐。有人声时音乐会自动压低 |
 | `audio.sfx` | 是否开启音效。每次转场自动配一声 whoosh（`transitionSfx: false` 可以关掉）；其余音效在 scenes.js 的 `SFX` 里指定 |
 | `brand` / `hud` | 右上角角标文字（默认 null，不显示）/ 章节进度小圆环 |
 
@@ -154,17 +160,29 @@ const SFX = { intro: (S) => [{ at: S.word(0, '智能体'), sound: 'pop' }] };   
 
 风格可以整片统一，也可以随内容切换（比如“外部世界”用 paper，“机器内部”用 blueprint），自己把握；切换太频繁容易显得乱。等轴测需要在场景里用 `isoBox` 等函数专门画，参考 `examples/iso-city`。
 
+## 系列片
+
+一个题材做成几集时，第一集照常 `init`，之后每一集用 `--episode-of`：
+
+```bash
+node <skill>/scripts/init.mjs ep2 --episode-of ep1
+```
+
+新的一集沿用第一集 `script.json` 里的设置（声音、语速、比例、风格、音频），`node_modules` 和 `.venv` 直接链接到第一集的，不重新安装。第一集在 `index.html` 里加的脚本（自己写的绘图函数库、风格、角色）和音乐文件不复制，新的一集直接加载第一集目录里的那一份：改一处，各集一起生效，所以第一集的目录要留着。
+
+要让各集共用的东西（这部片子的风格、人物画法、道具），放在单独的 js 文件里，用 `<script>` 加在 `index.html` 的 `scenes.js` 之前；写在 `scenes.js` 里的内容只属于那一集。
+
 ## 必读的坑
 
 动手前先扫一眼 `references/pitfalls.md`。最常见的几个：
 - 深色风格下，高亮底上的文字要用 `C.onMark`；图形和大字都放在 `SAFE` 里面。
-- 竖屏时字幕在画面下方大约 84% 的高度，`SAFE.y1` 约为 70% 的高度，角色放在 `SAFE.y1` 附近。如果风格背景底部已经有地形（papercut 的纸山、ink 的远山、pixel 的山），就不要再画 `drawGround`，免得多出一条浮在空中的线。
+- 竖屏时字幕在画面下方大约 84% 的高度，`SAFE.y1` 约为 70% 的高度，角色放在 `SAFE.y1` 附近。长句的字幕最多折成 3 行，会向上顶到 75% 高度附近，`SAFE.y1` 以下不要放标签；一句超过 40 个字就拆成两句。如果风格背景底部已经有地形（papercut 的纸山、ink 的远山、pixel 的山），就不要再画 `drawGround`，免得多出一条浮在空中的线。
 - `--dry` 估算的时长和真实配音大约有 ±10% 的误差，控制总时长要以真实配音为准。
 - 调画面时用 snap 和 `--draft`，不要反复整片导出。
 
 ## 改引擎之后
 
-改了 `engine/`、`scripts/`、`templates/` 或 `examples/`，都要运行 `node <skill>/scripts/selftest.mjs`。它会覆盖所有示例（加上竖屏模板），在每种风格、每个形象下截图，做纯函数检查，和 `tests/golden/` 里的基准图比较，再混音并用草稿模式完整导出一遍。如果画面变化是有意的，用 `--update-golden` 更新基准图。
+改了 `engine/`、`scripts/`、`templates/` 或 `examples/`，都要运行 `node <skill>/scripts/selftest.mjs`。它会覆盖所有示例（加上竖屏模板），在每种风格、每个形象下截图，做纯函数检查，和 `tests/golden/` 里的基准图比较，再混音并用草稿模式完整导出一遍，最后用 `--episode-of` 建一集系列片跑通全流程。如果画面变化是有意的，用 `--update-golden` 更新基准图。
 
 ## 示例
 

@@ -31,6 +31,14 @@ export function launchBrowser() {
   return puppeteer.launch({ executablePath: findChrome(), headless: true, args: ['--allow-file-access-from-files', '--autoplay-policy=no-user-gesture-required'] });
 }
 
+// Close Chrome and let go of its stdio pipes. Chrome's crash handler can outlive the browser by minutes and
+// keeps the other ends open; without this a long export sits there after "done" instead of exiting.
+export async function closeBrowser(browser) {
+  const proc = browser.process();
+  await browser.close();
+  for (const s of [proc?.stdin, proc?.stdout, proc?.stderr]) s?.destroy();
+}
+
 // executable inside the project's Python virtualenv
 export const venvBin = (name) => (IS_WIN ? `.venv/Scripts/${name}.exe` : `.venv/bin/${name}`);
 

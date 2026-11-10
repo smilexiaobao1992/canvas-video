@@ -1,6 +1,8 @@
 // Engine self-test: run after changing engine/, scripts/, templates/ or examples/.
 // For every example (and the template in 9:16): init a temp project, dry timeline, snap every style and every
 // character (purity check + golden-image comparison), mix audio, and a full draft export.
+// Then a second episode is created from the 9:16 project with --episode-of (shared dependencies and settings) and
+// run end to end with the guqin music preset and a storyboard.
 // Usage: node <skill>/scripts/selftest.mjs [--update-golden] [--quick]
 //   --update-golden  accept the current rendering as the new reference images (after an intended visual change)
 //   --quick          one style and one character per example (faster smoke test)
@@ -62,6 +64,24 @@ for (const c of CASES) {
     if (Math.abs(got - want) > 0.2) throw new Error(`smoke.mp4 is ${got}s, timeline says ${want}s`);
     const size = run('ffprobe', ['-v', 'error', '-select_streams', 'v', '-show_entries', 'stream=width,height', '-of', 'csv=p=0', 'smoke.mp4'], dir).trim();
     return `${size}, ${got.toFixed(1)}s`;
+  });
+}
+
+{
+  const first = join(tmp, 'template-9x16'), dir = join(tmp, 'episode');
+  step('episode: init --episode-of', () => {
+    run('node', [join(SKILL, 'scripts/init.mjs'), dir, '--episode-of', first], tmp);
+    const s = JSON.parse(readFileSync(join(dir, 'script.json'), 'utf8'));
+    if (s.format !== '9:16') throw new Error(`episode did not inherit the format (got ${s.format})`);
+    // the template registers its placeholder style inside scenes.js, which an episode does not inherit
+    writeFileSync(join(dir, 'script.json'), JSON.stringify({ ...s, style: 'minimal', audio: { ...s.audio, music: 'guqin' } }, null, 2));
+  });
+  step('episode: tts --dry', () => lastLine(run('node', ['scripts/tts.mjs', '--dry'], dir)));
+  step('episode: snap', () => lastLine(run('node', ['scripts/snap.mjs'], dir)));
+  step('episode: export --draft --storyboard (guqin)', () => {
+    const out = run('node', ['scripts/export.mjs', '--draft', '--storyboard', '--out', 'smoke.mp4'], dir);
+    if (!existsSync(join(dir, 'smoke-storyboard.png'))) throw new Error('storyboard was not written');
+    return out.trim().split('\n').find((l) => l.includes('check:')).trim();
   });
 }
 

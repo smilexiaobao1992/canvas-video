@@ -112,7 +112,7 @@ rmSync('audio.wav', { force: true });
 const [width, height] = FORMATS[format];
 const timeline = {
   duration, fps: script.fps || 30, format, width, height,
-  style: script.style || 'paper', brand: script.brand ?? null, hud: script.hud ?? true,
+  style: script.style || 'minimal', brand: script.brand ?? null, hud: script.hud ?? true,
   cast: script.cast || { host: 'bot' }, subtitles: script.subtitles || {}, audio: script.audio || {},
   backdrop: script.backdrop || null, backdropOpacity: script.backdropOpacity ?? null,
   scenes, lines: lines.map(({ file, ...l }) => l),
