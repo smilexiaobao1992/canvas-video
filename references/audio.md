@@ -27,6 +27,9 @@
 | `type` | 打字、敲代码 |
 | `swell` | 大字或关键画面登场前的上扬音 |
 | `glitch` | 故障（glitch 转场会自动加上） |
+| `boom` | 低沉的撞击：门关上、重物落地、盖章 |
+| `drum` | 一声大鼓：切到紧张的镜头、人物登场 |
+| `gong` | 大钟，余音 4 秒：揭示、结局 |
 
 在 scenes.js 里写：
 ```js
@@ -39,4 +42,5 @@ const SFX = {
 - 人声，加上音乐（用 sidechain 自动闪避：有人声时压低，停顿时回来），再加上所有音效，最后统一响度到 -16 LUFS（常见网络视频标准）。
 - `node scripts/mix.mjs` 生成 `audio.wav`，预览页会优先播放它；导出时会自动重新混一遍。
 - 音量：`musicVolume` 默认 0.16，`sfxVolume` 默认 0.35，单个音效还可以在 cue 里单独写 volume。音乐太吵就调低 musicVolume；如果人声清楚但音乐听不见，可以提到 0.2 到 0.25。
+- 起伏：场景里写 `"musicLevel": 1.4` 让这一幕的配乐更响，`0.7` 压低，`0` 静音；场景交界处用 0.8 秒过渡。
 - 不想要：`"music": null` 关音乐，`"sfx": false` 关所有音效，`"transitionSfx": false` 只关转场的 whoosh。

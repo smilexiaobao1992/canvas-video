@@ -2,7 +2,8 @@
 // For every example (and the template in 9:16): init a temp project, dry timeline, snap every style and every
 // character (purity check + golden-image comparison), mix audio, and a full draft export.
 // Then a second episode is created from the 9:16 project with --episode-of (shared dependencies and settings) and
-// run end to end with the guqin music preset and a storyboard.
+// run end to end with the guqin music preset and a storyboard; its scene is written with shots(), layer(), the camera
+// framings and the finishing helpers, and snap --strip has to report two shots.
 // Usage: node <skill>/scripts/selftest.mjs [--update-golden] [--quick]
 //   --update-golden  accept the current rendering as the new reference images (after an intended visual change)
 //   --quick          one style and one character per example (faster smoke test)
@@ -74,10 +75,23 @@ for (const c of CASES) {
     const s = JSON.parse(readFileSync(join(dir, 'script.json'), 'utf8'));
     if (s.format !== '9:16') throw new Error(`episode did not inherit the format (got ${s.format})`);
     // the template registers its placeholder style inside scenes.js, which an episode does not inherit
+    s.scenes[0].musicLevel = 1.4;
     writeFileSync(join(dir, 'script.json'), JSON.stringify({ ...s, style: 'minimal', audio: { ...s.audio, music: 'guqin' } }, null, 2));
+    writeFileSync(join(dir, 'scenes.js'), `const SCENES = { opening: shots((S) => [
+  { cam: (lt, S, sh) => camDrift(camMove({ z: 1 }, camFit(200, 600, 880, 1300), sh.p), lt),
+    draw(lt, S, t, sh) { layer(0.5, () => { ctx.fillStyle = C.surfaceAlt; ctx.fillRect(-400, -400, W + 800, H + 800); }); text('一', W / 2, H / 2, { size: 300 }); layer(1.4, () => { ctx.fillStyle = C.ink; ctx.fillRect(-200, 1500, 400, 900); }); vignette(0.4); } },
+  { at: S.L(0).s + 0.6, transition: 'fade',
+    draw(lt, S, t, sh) { ctx.fillStyle = C.mark; ctx.fillRect(-400, -400, W + 800, H + 800); text('二', W / 2, H / 2, { size: 300, color: C.onMark }); lightPool(W / 2, 600, 500); grade('#203060', 0.2); flash(sh.p); } },
+]) };
+const SFX = { opening: (S) => [{ at: 0.2, sound: 'drum' }, { at: S.L(0).s + 0.6, sound: 'boom' }, { at: S.L(0).e, sound: 'gong' }] };
+`);
   });
   step('episode: tts --dry', () => lastLine(run('node', ['scripts/tts.mjs', '--dry'], dir)));
-  step('episode: snap', () => lastLine(run('node', ['scripts/snap.mjs'], dir)));
+  step('episode: snap --strip (shots, pacing)', () => {
+    const out = run('node', ['scripts/snap.mjs', '--strip'], dir);
+    if (!/pacing: 2 shots/.test(out)) throw new Error(`expected a pacing report for 2 shots, got:\n${out}`);
+    return lastLine(out);
+  });
   step('episode: export --draft --storyboard (guqin)', () => {
     const out = run('node', ['scripts/export.mjs', '--draft', '--storyboard', '--out', 'smoke.mp4'], dir);
     if (!existsSync(join(dir, 'smoke-storyboard.png'))) throw new Error('storyboard was not written');

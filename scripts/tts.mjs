@@ -89,6 +89,7 @@ for (const scene of script.scenes) {
     id: scene.id, title: scene.title || scene.id, style: scene.style || null, cast: scene.cast || null,
     transition: scene.transition || null, transitionDuration: scene.transitionDuration ?? null,
     backdrop: scene.backdrop || null, backdropOpacity: scene.backdropOpacity ?? null, transitionFocus: scene.transitionFocus || null,
+    musicLevel: scene.musicLevel ?? null,
     start: +sceneStart.toFixed(3), end: +cursor.toFixed(3),
   });
 }

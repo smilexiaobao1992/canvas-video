@@ -28,7 +28,8 @@ export function findChrome() {
 }
 
 export function launchBrowser() {
-  return puppeteer.launch({ executablePath: findChrome(), headless: true, args: ['--allow-file-access-from-files', '--autoplay-policy=no-user-gesture-required'] });
+  // protocolTimeout 0: one page call renders a whole range of frames, which takes minutes on a long or heavy film
+  return puppeteer.launch({ executablePath: findChrome(), headless: true, protocolTimeout: 0, args: ['--allow-file-access-from-files', '--autoplay-policy=no-user-gesture-required'] });
 }
 
 // Close Chrome and let go of its stdio pipes. Chrome's crash handler can outlive the browser by minutes and

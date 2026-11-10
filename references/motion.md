@@ -30,6 +30,8 @@
 ## 效果
 | 函数 | 说明 |
 |---|---|
+| `camFit(x0, y0, x1, y1, pad)`、`camMove(a, b, p, ease)`、`camDrift(cam, t, amount)` | 镜头取景：特写一个矩形、从一个取景运动到另一个、加手持漂移。都返回 `{x, y, z}`，见 `directing.md` |
+| `lightPool(x, y, r, color, alpha)`、`grade(color, alpha, mode)`、`vignette(strength, color, inner)`、`flash(p, color, peak)` | 整幅画面的光影和调色，在一幕的最后调用，见 `directing.md` |
 | `shake(lt, at, amp=14, dur=0.5)` | 在 CAMS 里用：`{x: W/2 + s.x, y: H/2 + s.y}`。从 at 开始震动，逐渐衰减 |
 | `punchIn(lt, at, amount=0.08, dur=0.5)` | 在 CAMS 里当作 z 使用：快速推近再回落 |
 | `ripple(x, y, lt, at, { rings, maxR, dur, color })` | 点击涟漪 |

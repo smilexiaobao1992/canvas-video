@@ -10,7 +10,7 @@ try {
   if (errors.length) throw new Error(`page errors:\n  ${errors.join('\n  ')}`);
   const cues = await page.evaluate(() => window.collectCues());
   const cfg = TL.audio || {};
-  mixAudio({ duration: TL.duration, cfg, cues });
+  mixAudio({ duration: TL.duration, cfg, cues, scenes: TL.scenes });
   console.log(`audio.wav: ${TL.duration}s, music ${cfg.music === undefined ? 'calm' : cfg.music}, ${cfg.sfx === false ? 0 : cues.length} sound effects`);
 } finally {
   await closeBrowser(browser);

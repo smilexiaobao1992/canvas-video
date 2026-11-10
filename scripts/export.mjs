@@ -103,7 +103,7 @@ try {
 const encodedAt = Date.now();
 
 // final audio: voice + ducked music + sfx; also refresh audio.wav so the preview page plays the same mix
-mixAudio({ duration: TL.duration, cfg: TL.audio || {}, cues, out: `${SEG_DIR}/audio.wav` });
+mixAudio({ duration: TL.duration, cfg: TL.audio || {}, cues, scenes: TL.scenes, out: `${SEG_DIR}/audio.wav` });
 if (!style && !cast) copyFileSync(`${SEG_DIR}/audio.wav`, 'audio.wav');
 
 // Annex B streams concatenate byte-for-byte when every segment starts with a keyframe

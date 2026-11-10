@@ -30,7 +30,8 @@ node <skill>/scripts/init.mjs my-video               # 竖屏加 --format 9:16
 #    系列片的下一集：node <skill>/scripts/init.mjs ep2 --episode-of ep1（见下文“系列片”）
 cd my-video
 
-# 2. 写 script.json（口播稿、画面比例、风格、角色、音频）和 scenes.js（画面）；模板里的 mine 风格只是占位，按内容改写或换掉
+# 2. 写 script.json（口播稿、画面比例、风格、角色、音频）；模板里的 mine 风格只是占位，按内容改写或换掉
+#    写 scenes.js 之前先列分镜表：每句台词观众看到什么、什么在动、哪几个是最有分量的画面（references/directing.md）
 
 # 3. 生成时间轴。写画面阶段先用 --dry：离线估算时长和逐词时间，生成静音音轨，速度快
 node scripts/tts.mjs --dry
@@ -38,7 +39,9 @@ node scripts/tts.mjs --dry
 # 4. 截图自查：每个场景出一张图，拼成 snaps/sheet.png（帧数多时分页：sheet-p1.png、sheet-p2.png……）
 #    同时把每个场景从头到尾跑一遍，写错的 S.word 这类只在场景后半段才触发的错误会一次全部列出来；
 #    页面报错、场景报错或画面不是纯函数时，退出码为 1。上一次的截图会自动清掉
+#    还会打印一段 pacing：每个镜头停多久、画面用了多少、有多少在动、镜头动没动（静帧看不出来的东西）
 node scripts/snap.mjs                 # 或指定时刻：snap.mjs 3.5 12；或每个场景取多个点：--at 0.3,0.9
+node scripts/snap.mjs --strip         # 每个镜头一行连续帧，看它到底动了没有；--scene a,b 只看某几幕
 
 # 5. 画面满意后，生成真实配音（按句缓存）
 node scripts/tts.mjs
@@ -80,6 +83,7 @@ node scripts/export.mjs --storyboard        # 另外出一张分镜图 <输出�
 |---|---|
 | `format` | `16:9` 横屏 1920×1080（默认）、`9:16` 竖屏 1080×1920、`1:1` 方屏 1080×1080 |
 | `lead` / `hold` | 场景开始到第一句之间的留白 / 最后一句说完后画面停留的秒数（给收尾动画留时间） |
+| `musicLevel` | 这一幕配乐的音量倍数：1 正常，0 静音，大于 1 更响，交界处自动过渡。用来给整片做出起伏 |
 | `style` / `transition` | 场景级设置会覆盖全局；转场还可以用 `transitionDuration` 调时长（默认 0.6 秒） |
 | `backdrop` | 场景氛围：`network`、`flow`、`particles`、`spotlight`、`gradient`、`rings`，天空类 `space`、`sunset`、`dusk`、`dawn`，或 `none`（默认）；也可以用 `registerBackdrop` 自己写。全局写一个，场景可以单独覆盖，配合 `backdropOpacity`。见 `references/generative.md` |
 | `transitionFocus` | 转场用 `portal` 时，镜头钻进上一幕的哪个点 `[x, y]` |
@@ -108,17 +112,18 @@ const CAMS = { intro: (lt, S) => ({ x: W / 2, y: H / 2, z: punchIn(lt, S.word(0,
 const SFX = { intro: (S) => [{ at: S.word(0, '智能体'), sound: 'pop' }] };                               // 可选
 ```
 
-- **画布**：`W × H` 由 `format` 决定。重要内容放在 `SAFE`（`{x0, y0, x1, y1}`）里面，它已经给标题、字幕和竖屏平台的界面留出了位置。画面位置都用 `W`、`H`、`SAFE` 来算，同一套场景就能适配不同比例。
+- **画布**：`W × H` 由 `format` 决定。`SAFE`（`{x0, y0, x1, y1}`）是**字**的安全区：标题、字幕和竖屏平台的界面不会挡到里面的文字。画面本身不受它限制，布景可以铺满整个画布。位置都用 `W`、`H`、`SAFE` 来算，同一套场景就能适配不同比例。
+- **分镜**：一个场景可以用 `shots()` 拆成几个镜头，在台词的词上切换，每个镜头有自己的画面和镜头运动；`layer(depth, fn)` 让远景、前景随镜头分层移动。见 `references/directing.md`。
 - **时间**：
   - `S.L(i)`：本场景第 i 句（从 0 开始，按场景内编号）的 `{s, e}`，时间相对本场景开头
   - `S.word(i, '词')` / `S.wordEnd(i, '词')`：这个词在第 i 句里开始 / 结束说的时刻。按字匹配，配音把词切成“智能 / 体动手”这样也能找到“动手”
   - `S.speaking(lt)`：旁白正在念时为 true
   - 动作要挂在这些时间上，不要写死秒数，否则换声音或改语速后会对不上。
 - **纯函数**：不能跨帧保存状态；模拟类内容用 `mulberry32(seed)` 预先算好，再按时间插值读取。snap 会自动检查这一点。
-- **镜头**：`CAMS[id]` 返回 `{x, y, z}`，用 `shake()` 震屏、`punchIn()` 快速推近。`drawTag`、`drawProgress` 和用 `pinned()` 包起来的内容不受镜头影响。
-- **音效**：`SFX[id](S)` 返回 `[{ at, sound, volume }]`。可用的声音有：`whoosh`、`pop`、`ding`、`success`、`error`、`click`、`type`、`swell`、`glitch`。
+- **镜头**：`CAMS[id]`（或镜头自己的 `cam`）返回 `{x, y, z}`。`camFit()` 给特写，`camMove()` 推拉平移，`camDrift()` 加手持漂移，`shake()` 震屏，`punchIn()` 快速推近。`drawTag`、`drawProgress` 和用 `pinned()` 包起来的内容不受镜头影响。
+- **音效**：`SFX[id](S)` 返回 `[{ at, sound, volume }]`。可用的声音有：`whoosh`、`pop`、`ding`、`success`、`error`、`click`、`type`、`swell`、`glitch`，以及三个重音 `boom`（撞击）、`drum`（大鼓）、`gong`（大钟）。
 
-完整 API：`references/primitives.md`（基础）、`references/motion.md`（动效）、`references/generative.md`（生成式效果）、`references/illustrate.md`（插画主体）、`references/components.md`（组件）、`references/audio.md`（声音）。
+完整 API：`references/primitives.md`（基础）、`references/directing.md`（分镜、镜头、景深、光影、节奏自查）、`references/motion.md`（动效）、`references/generative.md`（生成式效果）、`references/illustrate.md`（插画主体）、`references/components.md`（组件）、`references/audio.md`（声音）。
 
 ## 创作交给你
 
@@ -126,6 +131,7 @@ const SFX = { intro: (S) => [{ at: S.word(0, '智能体'), sound: 'pop' }] };   
 
 工具箱（按需取用，也可以都不用，找不到合适的就用基础绘图函数自己画）：
 
+- 分镜和镜头（`references/directing.md`）：一幕里切镜头 `shots`、特写和推拉 `camFit` / `camMove` / `camDrift`、景深 `layer`、光影 `lightPool` / `grade` / `vignette` / `flash`。
 - 动效（`references/motion.md`）：变形 `morphPath`、粒子聚字 `particleText`、弹簧和错开 `spring` / `stagger`、文字特效 `textReveal`、沿路径运动 `followPath`、强调 `burst` / `ripple` / `circleMark` / `highlighter`、镜头 `punchIn` / `shake`、速度线 `speedLines`。
 - 转场：`wipe`、`erase`、`blot`、`slide`、`dissolve`、`fade`、`iris`、`zoom`、`glitch`、`split`、`shutter`、`portal`（钻进上一幕的某个点）、`cut`。
 - 组件（`references/components.md`）：图表、代码块、终端、AI 对话界面、流程图、时间轴、对比表、图标。
@@ -135,7 +141,16 @@ const SFX = { intro: (S) => [{ at: S.word(0, '智能体'), sound: 'pop' }] };   
 
 技术上的一个提示：动作和音效可以用 `S.word` 卡在台词的具体词上，换声音或改语速后依然对齐。
 
-**看图自查时留意**：文字要看得清（横屏 26px 以下、竖屏 32px 以下通常就太小了）；主要内容放在 `SAFE` 里，不被标题、字幕、镜头裁掉；画面上同时要看的东西不要太多，信息多时可以分批出现或者拆成两幕。
+**看图自查时问自己**（前三条看单张图，后几条看 `pacing` 和 `--strip`）：
+
+- 字看得清吗？（横屏 26px 以下、竖屏 32px 以下通常就太小了）
+- 要读的字有没有被标题、字幕、镜头裁掉或盖住？
+- 一个画面里同时要看的东西是不是太多？能不能分批出现，或者拆成两个镜头？
+- 哪个镜头停得最久？那几秒里观众在看什么变化？
+- 画面用满了吗，还是所有内容都收在中间一块？
+- 连着几个镜头的构图是不是都差不多？
+- 开头三秒放的是不是全片最抓人的画面之一？
+- 用户已经认可了画风和人物时：我改的只是镜头做法，还是把他认可的东西也换掉了？
 
 ## 角色
 

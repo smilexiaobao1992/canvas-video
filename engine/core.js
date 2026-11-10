@@ -432,20 +432,78 @@ function applyCam(cam, k, overscan = 1) {
 }
 const PARALLAX = { base: 0.12, ambient: 0.35, backdrop: 0.6 };
 
-function drawScene(S, lt, t) {
+
+// ---------- shots: several pictures inside one scene ----------
+// const SCENES = { id: shots((S) => [{ at: 0, draw(lt, S, t, sh) {}, cam(lt, S, sh) {} }, { at: S.word(1, '词'), draw, cam }]) };
+// `at` is seconds into the scene (usually a word time); a shot runs until the next one starts. lt stays the scene
+// clock, so S.word / S.L work unchanged. sh = { index, start, dur, t: seconds into this shot, p: 0..1 }.
+// Shots cut by default; `transition` takes any scene transition name, `transitionDuration` defaults to 0.4s.
+function shots(build) {
+  const fn = () => { throw new Error('a shots() scene is drawn by the engine; do not call it directly'); };
+  fn.shots = build;
+  return fn;
+}
+function shotsOf(S) {
+  if (S._shots !== undefined) return S._shots;
+  const build = SCENE_FNS[S.id].shots;
+  if (!build) return (S._shots = null);
+  const list = build(S);
+  if (!Array.isArray(list) || !list.length) throw new Error(`scene "${S.id}": shots() must return a non-empty array of shots`);
+  const out = list.map((sh, i) => {
+    const start = i === 0 ? 0 : sh.at;
+    if (typeof sh.draw !== 'function') throw new Error(`scene "${S.id}" shot ${i} has no draw function`);
+    if (!Number.isFinite(start)) throw new Error(`scene "${S.id}" shot ${i} needs a numeric "at" (seconds into the scene)`);
+    const transition = sh.transition || 'cut';
+    if (!TRANSITIONS[transition] && transition !== 'cut') throw new Error(`scene "${S.id}" shot ${i} uses unknown transition "${transition}"; available: ${Object.keys(TRANSITIONS).join(', ')}, cut`);
+    return { ...sh, index: i, start, transition, tdur: sh.transitionDuration ?? 0.4 };
+  });
+  out.forEach((sh, i) => {
+    sh.end = i + 1 < out.length ? out[i + 1].start : S.dur;
+    if (sh.end <= sh.start) throw new Error(`scene "${S.id}" shot ${i} starts at ${sh.start.toFixed(2)}s, not before the next shot (${sh.end.toFixed(2)}s); shots must be in time order`);
+  });
+  return (S._shots = out);
+}
+
+// camera and transform of the picture being drawn, for layer() and the full-frame finishing helpers
+let CUR_CAM = { x: W / 2, y: H / 2, z: 1 }, CUR_BASE = new DOMMatrix();
+let EMPTY_PASS = false; // renderFrame(t, { empty: true }) draws everything except scene content (used to measure frame use)
+function defaultCam(p) { return { x: W / 2, y: H / 2, z: 1 + 0.035 * easeInOut(clamp(p)) }; }
+// Draw fn at another depth of the same camera: 1 moves with the scene, below 1 is farther away (moves and zooms
+// less), above 1 is nearer than the subject (moves more). layer(0, fn) is fixed to the screen.
+function layer(depth, fn) { ctx.save(); ctx.setTransform(CUR_BASE); applyCam(CUR_CAM, depth); fn(); ctx.restore(); }
+
+// one picture: backgrounds far to near, then the content of a plain scene (sh = null) or of one shot
+function drawPicture(S, lt, t, sh) {
   const s = useStyle(S.style);
   CUR_SCENE = S;
-  // scene camera: focus point + zoom; default is a slow push-in
-  const cam = CAM_FNS[S.id] ? CAM_FNS[S.id](lt, S) : { x: W / 2, y: H / 2, z: 1 + 0.035 * easeInOut(clamp(lt / S.dur)) };
+  const shInfo = sh && { index: sh.index, start: sh.start, dur: sh.end - sh.start, t: lt - sh.start, p: clamp((lt - sh.start) / (sh.end - sh.start)) };
+  // camera: focus point + zoom; default is a slow push-in over the scene or the shot
+  const camFn = (sh && sh.cam) || CAM_FNS[S.id];
+  const c = camFn ? camFn(lt, S, shInfo) : defaultCam(sh ? shInfo.p : lt / S.dur);
+  const cam = { x: c.x ?? W / 2, y: c.y ?? H / 2, z: c.z ?? 1 };
   const info = { seed: S.seed, sceneIndex: S.index, t, lt };
-  // far to near: static base, style ambient motion, scene backdrop, then the scene itself
   ctx.save(); applyCam(cam, PARALLAX.base, 1.06); ctx.drawImage(bgOf(s), 0, 0); ctx.restore();
   if (s.ambient) { ctx.save(); applyCam(cam, PARALLAX.ambient, 1.04); s.ambient(ctx, t, C, info); ctx.restore(); }
   if (S.backdrop !== 'none') { ctx.save(); applyCam(cam, PARALLAX.backdrop, 1.02); BACKDROPS[S.backdrop](t, { ...info, opacity: S.backdropOpacity }, {}); ctx.restore(); }
   ctx.save();
+  CUR_CAM = cam; CUR_BASE = ctx.getTransform();
   applyCam(cam, 1);
-  SCENE_FNS[S.id](lt, S, t);
+  if (!EMPTY_PASS) { if (sh) sh.draw(lt, S, t, shInfo); else SCENE_FNS[S.id](lt, S, t); }
   ctx.restore();
+}
+function drawScene(S, lt, t) {
+  const list = shotsOf(S);
+  if (!list) return drawPicture(S, lt, t, null);
+  let k = list.length - 1;
+  while (k > 0 && lt < list[k].start) k--;
+  const sh = list[k];
+  // a shot transition never runs on top of the scene's own incoming transition
+  const entering = S.index > 0 && S.transition !== 'cut' && lt < S.tdur;
+  const wp = k > 0 && sh.transition !== 'cut' && !entering ? easeInOut(prog(lt, sh.start, sh.start + sh.tdur)) : 1;
+  if (wp < 1) {
+    drawPicture(S, sh.start - 0.001, t - (lt - sh.start) - 0.001, list[k - 1]);
+    TRANSITIONS[sh.transition](() => drawPicture(S, lt, t, sh), wp, { ...S, transitionFocus: sh.transitionFocus || [W / 2, H / 2] });
+  } else drawPicture(S, lt, t, sh);
 }
 
 // helpers for transitions that need the previous or next frame as an image
@@ -723,6 +781,7 @@ function boot({ scenes, cams, sfx } = {}) {
     const auto = !(TL.audio && TL.audio.transitionSfx === false);
     SCENE_LIST.forEach((S, i) => {
       if (auto && i > 0 && S.transition !== 'cut') cues.push({ at: S.start, sound: S.transition === 'glitch' ? 'glitch' : 'whoosh', volume: 0.7 });
+      if (auto) for (const sh of shotsOf(S) || []) if (sh.index > 0 && sh.transition !== 'cut') cues.push({ at: S.start + sh.start, sound: sh.transition === 'glitch' ? 'glitch' : 'whoosh', volume: 0.5 });
       if (sfx[S.id]) for (const c of sfx[S.id](S)) {
         if (!c.sound || !Number.isFinite(c.at)) throw new Error(`SFX for scene "${S.id}" must return [{ at, sound }]`);
         cues.push({ ...c, at: S.start + c.at });
@@ -772,7 +831,16 @@ function boot({ scenes, cams, sfx } = {}) {
   seek.oninput = () => { cur = parseFloat(seek.value); audio.currentTime = cur; show(cur); };
   window.addEventListener('keydown', (e) => { if (e.code === 'Space') { e.preventDefault(); playBtn.click(); } });
 
-  window.renderFrame = (t) => render(t);
+  window.renderFrame = (t, opts) => { EMPTY_PASS = !!(opts && opts.empty); try { render(t); } finally { EMPTY_PASS = false; } };
+  // review hooks for scripts/snap.mjs: every shot of the film (a plain scene counts as one shot), the camera of the
+  // frame just rendered, and where the subtitle block can start
+  window.shotList = () => SCENE_LIST.flatMap((S) => {
+    const list = shotsOf(S);
+    if (!list) return [{ scene: S.id, shot: 0, start: S.start, end: S.end, ownCam: !!CAM_FNS[S.id] }];
+    return list.map((sh) => ({ scene: S.id, shot: sh.index, start: S.start + sh.start, end: S.start + sh.end, ownCam: !!(sh.cam || CAM_FNS[S.id]) }));
+  });
+  window.lastCam = () => ({ ...CUR_CAM });
+  window.subtitleTop = () => { const L = LAYOUT.sub, size = Math.round(STYLE_DEFAULTS.subtitle.size * L.scale); return L.y - (L.lines - 1) * size * 1.35 - size; };
   const fontLoads = [];
   for (const s of Object.values(STYLES)) for (const f of [s.fonts.body, s.fonts.title]) for (const wgt of [400, 700]) fontLoads.push(document.fonts.load(`${wgt} 40px ${f}`));
   // web fonts split by unicode-range load lazily; force every declared face so the first frames never use a fallback

@@ -6,6 +6,8 @@
  * Canvas: W x H (1920x1080, 1080x1920 or 1080x1080 from "format"); keep key content inside SAFE {x0, y0, x1, y1}.
  * Characters: drawRole('host', x, y, scale, t, { mood, look, walk, wave, point, talk }) — who plays "host" is set by "cast".
  * Draw with engine primitives, motion helpers and components; colors are semantic (C.ink, C.ok, C.bad, C.note, C.mark ...).
+ * A scene can be cut into several shots, each with its own picture and camera: id: shots((S) => [{ draw, cam }, { at: S.word(0, '词'), draw }])
+ * (see references/directing.md). SAFE only protects text; the picture itself may fill the whole canvas.
  * Everything must be a pure function of time: no state carried between frames.
  */
 

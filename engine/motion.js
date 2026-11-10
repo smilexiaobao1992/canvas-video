@@ -143,6 +143,46 @@ function shake(lt, at, amp = 14, dur = 0.5, seed = 0) {
 // quick zoom punch for CAMS.z: 1 -> 1+amount -> settles
 const punchIn = (lt, at, amount = 0.08, dur = 0.5) => (lt < at ? 1 : 1 + amount * Math.exp(-(lt - at) * (6 / dur)) * Math.sin(Math.min(Math.PI / 2, (lt - at) * 20)));
 // expanding rings (a click / ping)
+// ---------- camera framings for CAMS and shot cams: each returns { x, y, z } ----------
+// frame a rectangle of the scene so it fills the screen (a close-up); pad is the margin kept around it, 0..1
+function camFit(x0, y0, x1, y1, pad = 0.08) {
+  return { x: (x0 + x1) / 2, y: (y0 + y1) / 2, z: Math.min(W / Math.abs(x1 - x0), H / Math.abs(y1 - y0)) * (1 - pad) };
+}
+// travel from framing a to framing b as p goes 0..1 (push in, pull out, pan); zoom moves at an even visual speed
+function camMove(a, b, p, ease = easeInOut) {
+  const k = ease(clamp(p)), za = a.z ?? 1, zb = b.z ?? 1;
+  return { x: lerp(a.x ?? W / 2, b.x ?? W / 2, k), y: lerp(a.y ?? H / 2, b.y ?? H / 2, k), z: za * Math.pow(zb / za, k) };
+}
+// add a slow handheld drift to a framing so a held picture never freezes; t is the global time
+function camDrift(cam, t, amount = 10, seed = 0) {
+  const z = cam.z ?? 1;
+  return { x: (cam.x ?? W / 2) + (noise1(t * 0.31, seed) * amount) / z, y: (cam.y ?? H / 2) + (noise1(t * 0.27, seed + 7) * amount) / z, z: z * (1 + noise1(t * 0.19, seed + 13) * 0.006) };
+}
+
+// ---------- light and grade: full-frame finishing, call them last in a scene or shot ----------
+function screenSpace(fn) { ctx.save(); ctx.setTransform(CUR_BASE); fn(); ctx.restore(); }
+// darken the edges toward `color`; strength 0..1, inner = where the falloff starts (fraction of the frame diagonal)
+function vignette(strength = 0.5, color = '#000000', inner = 0.3) {
+  screenSpace(() => {
+    const d = Math.hypot(W, H) / 2, g = ctx.createRadialGradient(W / 2, H / 2, d * inner, W / 2, H / 2, d * 1.05);
+    g.addColorStop(0, withAlpha(color, 0)); g.addColorStop(1, withAlpha(color, clamp(strength)));
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  });
+}
+// tint the whole picture: 'multiply' pulls it toward a mood (cold night blue, warm lamp light), 'screen' lifts it
+function grade(color, alpha = 0.25, mode = 'multiply') {
+  screenSpace(() => { ctx.globalCompositeOperation = mode; ctx.globalAlpha = clamp(alpha); ctx.fillStyle = color; ctx.fillRect(0, 0, W, H); });
+}
+// a pool of light added on top of what is already drawn (torch, window, moon); scene coordinates
+function lightPool(x, y, r, color = '#ffd9a0', alpha = 0.6) {
+  ctx.save(); ctx.globalCompositeOperation = 'screen'; lightBlob(x, y, r, color, alpha); ctx.restore();
+}
+// full-frame flash for an impact: p 0..1 is the whole flash (peaks at once, then fades)
+function flash(p, color = '#ffffff', peak = 0.85) {
+  if (p <= 0 || p >= 1) return;
+  screenSpace(() => { ctx.globalAlpha = peak * Math.pow(1 - p, 2); ctx.fillStyle = color; ctx.fillRect(0, 0, W, H); });
+}
+
 function ripple(x, y, lt, at, o = {}) {
   const { color = C.note, rings = 3, maxR = 120, dur = 1.1, width = 4 } = o;
   for (let k = 0; k < rings; k++) {

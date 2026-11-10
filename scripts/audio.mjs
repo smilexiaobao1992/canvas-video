@@ -213,8 +213,24 @@ const SFX = {
       tone(L, R, t0, 0.04, (t) => Math.sign(Math.sin(TAU * f * t)) * 0.35 * Math.min(1, (0.04 - t) / 0.005), r() - 0.5);
     }
   },
+  // heavy hits for dramatic beats
+  boom(L, R, r) {
+    // deep impact: a sub sine falling in pitch under a short burst of muffled noise
+    let ph = 0, lp = 0;
+    tone(L, R, 0, 1.6, (t) => { ph += (TAU * (38 + 50 * Math.exp(-t * 14))) / SR; lp += 0.05 * ((r() * 2 - 1) - lp); return (Math.sin(ph) * Math.exp(-t * 2.6) + lp * 2.2 * Math.exp(-t * 16)) * Math.min(1, t / 0.004) * 0.9; });
+  },
+  drum(L, R, r) {
+    // one stroke on a big skin drum
+    let ph = 0, lp = 0;
+    tone(L, R, 0, 0.9, (t) => { ph += (TAU * (72 + 70 * Math.exp(-t * 22))) / SR; lp += 0.12 * ((r() * 2 - 1) - lp); return (Math.sin(ph) * Math.exp(-t * 5.5) + lp * 1.4 * Math.exp(-t * 30)) * Math.min(1, t / 0.003) * 0.9; });
+  },
+  gong(L, R) {
+    // a large bronze bell: inharmonic partials that ring for seconds, the low ones longest, with a slow beat
+    const f = 98, parts = [[1, 1, 0.9], [2.0, 0.6, 1.3], [2.76, 0.5, 1.8], [3.9, 0.3, 2.6], [5.4, 0.22, 3.6], [6.8, 0.12, 5]];
+    tone(L, R, 0, 4.5, (t) => parts.reduce((s, [m, a, d]) => s + Math.sin(TAU * f * m * t) * a * Math.exp(-t * d), 0) * (1 + 0.12 * Math.sin(TAU * 1.7 * t)) * Math.min(1, t / 0.006) * Math.min(1, (4.5 - t) / 0.4) * 0.45);
+  },
 };
-const SFX_LEN = { whoosh: 0.6, pop: 0.2, ding: 1.4, success: 1.2, error: 0.4, click: 0.1, type: 0.6, swell: 1.25, glitch: 0.35 };
+const SFX_LEN = { whoosh: 0.6, pop: 0.2, ding: 1.4, success: 1.2, error: 0.4, click: 0.1, type: 0.6, swell: 1.25, glitch: 0.35, boom: 1.6, drum: 0.9, gong: 4.5 };
 export const SFX_NAMES = Object.keys(SFX);
 
 export function sfxFile(name, dir) {
@@ -230,7 +246,8 @@ export function sfxFile(name, dir) {
 
 // ---------- mix ----------
 // cfg = TL.audio: { music: 'calm'|'bright'|'deep'|'guqin'|<file>|null, musicVolume, sfx: bool, sfxVolume }
-export function mixAudio({ voice = 'voice.wav', duration, cfg = {}, cues = [], out = 'audio.wav', dir = 'build/audio' }) {
+// scenes = TL.scenes: a scene's musicLevel (1 = normal, 0 = silent, above 1 = louder) shapes the music over the film
+export function mixAudio({ voice = 'voice.wav', duration, cfg = {}, cues = [], scenes = [], out = 'audio.wav', dir = 'build/audio' }) {
   mkdirSync(dir, { recursive: true });
   const inputs = ['-i', voice];
   const f = ['[0:a]aformat=sample_fmts=fltp:sample_rates=44100:channel_layouts=stereo,asplit=2[v][vkey]'];
@@ -245,7 +262,12 @@ export function mixAudio({ voice = 'voice.wav', duration, cfg = {}, cues = [], o
     } else if (!existsSync(file)) throw new Error(`music file not found: ${file} (or use a preset: ${MUSIC_NAMES.join(', ')})`);
     inputs.push('-stream_loop', '-1', '-i', file);
     // music ducks under the voice: sidechain compression keyed by the narration
-    f.push(`[${next}:a]aformat=sample_fmts=fltp:sample_rates=44100:channel_layouts=stereo,atrim=0:${duration},volume=${cfg.musicVolume ?? 0.16}[m0]`);
+    // per-scene level as one expression: 1 plus each scene's offset, ramped over 0.8s around its edges
+    const RAMP = 0.8;
+    const level = scenes.filter((s) => Number.isFinite(s.musicLevel) && s.musicLevel !== 1)
+      .map((s) => `${(s.musicLevel - 1).toFixed(3)}*clip((t-${(s.start - RAMP / 2).toFixed(3)})/${RAMP},0,1)*clip((${(s.end + RAMP / 2).toFixed(3)}-t)/${RAMP},0,1)`);
+    const dynamics = level.length ? `,volume='max(0,1+${level.join('+')})':eval=frame` : '';
+    f.push(`[${next}:a]aformat=sample_fmts=fltp:sample_rates=44100:channel_layouts=stereo,atrim=0:${duration},volume=${cfg.musicVolume ?? 0.16}${dynamics}[m0]`);
     f.push('[m0][vkey]sidechaincompress=threshold=0.02:ratio=6:attack=40:release=600[m]');
     mixIns.push('[m]');
     next++;
